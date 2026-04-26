@@ -1,0 +1,105 @@
+import request from 'supertest';
+
+import app from '../src/app.js';
+import { mongoManager } from '../src/db/mongo.js';
+
+const seededProfiles = [
+  {
+    id: '018f4f5c-6a90-7a33-b9d8-3c4f0e8b9f7a',
+    name: 'ella',
+    gender: 'female',
+    gender_probability: 0.98,
+    age: 28,
+    age_group: 'adult',
+    country_id: 'NG',
+    country_name: 'Nigeria',
+    country_probability: 0.64,
+    created_at: '2026-04-15T08:00:00Z'
+  },
+  {
+    id: '018f4f5c-6a90-7a33-b9d8-3c4f0e8b9f7b',
+    name: 'john',
+    gender: 'male',
+    gender_probability: 0.88,
+    age: 17,
+    age_group: 'teenager',
+    country_id: 'US',
+    country_name: 'United States of America',
+    country_probability: 0.72,
+    created_at: '2026-04-16T08:00:00Z'
+  },
+  {
+    id: '018f4f5c-6a90-7a33-b9d8-3c4f0e8b9f7c',
+    name: 'martha',
+    gender: 'female',
+    gender_probability: 0.9,
+    age: 67,
+    age_group: 'senior',
+    country_id: 'GB',
+    country_name: 'United Kingdom',
+    country_probability: 0.83,
+    created_at: '2026-04-17T08:00:00Z'
+  }
+];
+
+describe('GET /api/v1/profiles and /api/v1/profiles/search', () => {
+  beforeEach(async () => {
+    await mongoManager.getCollection('profiles').insertMany(seededProfiles);
+  });
+
+  it('supports filters sorting and pagination', async () => {
+    const response = await request(app).get(
+      '/api/v1/profiles?gender=female&sort_by=age&order=desc&page=1&limit=2'
+    );
+
+    expect(response.status).toBe(200);
+    expect(response.body.page).toBe(1);
+    expect(response.body.limit).toBe(2);
+    expect(response.body.total).toBe(2);
+    expect(response.body.data.map((profile) => profile.name)).toEqual(['martha', 'ella']);
+  });
+
+  it('clamps limit to 50 and validates query contract', async () => {
+    const clamped = await request(app).get('/api/v1/profiles?limit=100');
+    const invalidRange = await request(app).get('/api/v1/profiles?min_age=40&max_age=20');
+    const invalidType = await request(app).get('/api/v1/profiles?min_age=abc');
+
+    expect(clamped.status).toBe(200);
+    expect(clamped.body.limit).toBe(50);
+    expect(invalidRange.status).toBe(400);
+    expect(invalidRange.body).toEqual({ status: 'error', message: 'Invalid query parameters' });
+    expect(invalidType.status).toBe(422);
+    expect(invalidType.body).toEqual({ status: 'error', message: 'Invalid query parameters' });
+  });
+
+  it('interprets deterministic search queries', async () => {
+    const response = await request(app)
+      .get('/api/v1/profiles/search?q=young%20females%20from%20nigeria&sort_by=created_at&order=asc');
+
+    expect(response.status).toBe(200);
+    expect(response.body.total).toBe(0);
+  });
+
+  it('supports comparator and country search rules', async () => {
+    const response = await request(app)
+      .get('/api/v1/profiles/search?q=older%20than%2030%20from%20united%20kingdom');
+
+    expect(response.status).toBe(200);
+    expect(response.body.total).toBe(1);
+    expect(response.body.data[0].name).toBe('martha');
+  });
+
+  it('returns an interpretation error when no search rule matches', async () => {
+    const response = await request(app).get('/api/v1/profiles/search?q=hello%20world');
+
+    expect(response.status).toBe(400);
+    expect(response.body).toEqual({ status: 'error', message: 'Unable to interpret query' });
+  });
+
+  it('returns the same interpretation error for empty search text', async () => {
+    const response = await request(app).get('/api/v1/profiles/search?q=');
+
+    expect(response.status).toBe(400);
+    expect(response.body).toEqual({ status: 'error', message: 'Unable to interpret query' });
+  });
+});
