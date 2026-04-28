@@ -52,15 +52,41 @@ function parseCorsOrigin(value) {
   return value?.trim() || DEFAULT_CORS_ORIGINS;
 }
 
+function parseOptionalString(value) {
+  const normalized = value?.trim();
+  return normalized ? normalized : null;
+}
+
 const nodeEnv = parseNodeEnv(process.env.NODE_ENV);
+const port = parsePort(process.env.PORT);
+const appBaseUrl = parseOptionalString(process.env.APP_BASE_URL) || `http://localhost:${port}`;
 
 export const env = Object.freeze({
-  PORT: parsePort(process.env.PORT),
+  PORT: port,
   NODE_ENV: nodeEnv,
+  APP_BASE_URL: appBaseUrl,
   MONGO_URI: process.env.MONGO_URI?.trim() || 'mongodb://127.0.0.1:27017',
   DB_NAME: process.env.DB_NAME?.trim() || 'profile_db',
   CORS_ORIGIN: parseCorsOrigin(process.env.CORS_ORIGIN),
   SEED_PROFILES_SOURCE: process.env.SEED_PROFILES_SOURCE?.trim() || DEFAULT_SEED_SOURCE,
+  GITHUB_CLIENT_ID: parseOptionalString(process.env.GITHUB_CLIENT_ID) || '',
+  GITHUB_CLIENT_SECRET: parseOptionalString(process.env.GITHUB_CLIENT_SECRET) || '',
+  GITHUB_SCOPE: parseOptionalString(process.env.GITHUB_SCOPE) || 'read:user user:email',
+  GITHUB_AUTHORIZE_URL:
+    parseOptionalString(process.env.GITHUB_AUTHORIZE_URL) || 'https://github.com/login/oauth/authorize',
+  GITHUB_TOKEN_URL:
+    parseOptionalString(process.env.GITHUB_TOKEN_URL) || 'https://github.com/login/oauth/access_token',
+  GITHUB_REDIRECT_URI:
+    parseOptionalString(process.env.GITHUB_REDIRECT_URI) || `${appBaseUrl}/auth/github/callback`,
+  GITHUB_USER_URL: parseOptionalString(process.env.GITHUB_USER_URL) || 'https://api.github.com/user',
+  GITHUB_USER_EMAILS_URL:
+    parseOptionalString(process.env.GITHUB_USER_EMAILS_URL) || 'https://api.github.com/user/emails',
+  AUTH_COOKIE_SECURE: parseBoolean(process.env.AUTH_COOKIE_SECURE, nodeEnv === 'production'),
+  AUTH_PKCE_COOKIE_MAX_AGE_MS: parseInteger(process.env.AUTH_PKCE_COOKIE_MAX_AGE_MS, 600_000, { min: 1 }),
+  ACCESS_TOKEN_SECRET: parseOptionalString(process.env.ACCESS_TOKEN_SECRET) || '',
+  REFRESH_TOKEN_SECRET: parseOptionalString(process.env.REFRESH_TOKEN_SECRET) || '',
+  ACCESS_TOKEN_TTL_SECONDS: parseInteger(process.env.ACCESS_TOKEN_TTL_SECONDS, 180, { min: 1 }),
+  REFRESH_TOKEN_TTL_SECONDS: parseInteger(process.env.REFRESH_TOKEN_TTL_SECONDS, 300, { min: 1 }),
   ENABLE_DOCS: parseBoolean(process.env.ENABLE_DOCS, nodeEnv !== 'production'),
   TRUST_PROXY: parseBoolean(process.env.TRUST_PROXY, nodeEnv === 'production'),
   RATE_LIMIT_ENABLED: parseBoolean(process.env.RATE_LIMIT_ENABLED, nodeEnv !== 'test'),

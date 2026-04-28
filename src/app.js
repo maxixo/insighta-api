@@ -9,6 +9,7 @@ import openApiDocument from './docs/openapi.js';
 import { errorHandler } from './middleware/errorHandler.js';
 import { notFoundHandler } from './middleware/notFound.js';
 import { createRateLimiter } from './middleware/rateLimiter.js';
+import authRoutes from './routes/authRoutes.js';
 import healthRoutes from './routes/healthRoutes.js';
 import profileRoutes from './routes/profileRoutes.js';
 
@@ -32,6 +33,7 @@ export function createApp() {
     app.use('/docs', swaggerUi.serve, swaggerUi.setup(openApiDocument));
   }
   app.use('/health', healthRoutes);
+  app.use('/auth', authRoutes);
   app.use('/api/v1/profiles', profileRoutes);
 
   app.use(notFoundHandler);
