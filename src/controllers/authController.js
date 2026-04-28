@@ -1,6 +1,7 @@
 import { authService } from '../services/authService.js';
 import { githubOAuthService, GITHUB_STATE_COOKIE, GITHUB_VERIFIER_COOKIE } from '../services/githubOAuthService.js';
 import { asyncHandler } from '../utils/asyncHandler.js';
+import { validateRefreshTokenBody } from '../validators/authValidators.js';
 
 export const redirectToGithub = asyncHandler(async (_req, res) => {
   const authorizationRequest = githubOAuthService.createAuthorizationRequest();
@@ -26,4 +27,22 @@ export const handleGithubCallback = asyncHandler(async (req, res) => {
     access_token: session.accessToken,
     refresh_token: session.refreshToken
   });
+});
+
+export const refreshSession = asyncHandler(async (req, res) => {
+  const refreshToken = validateRefreshTokenBody(req.body);
+  const session = await authService.refreshSession(refreshToken);
+
+  res.status(200).json({
+    status: 'success',
+    access_token: session.accessToken,
+    refresh_token: session.refreshToken
+  });
+});
+
+export const logout = asyncHandler(async (req, res) => {
+  const refreshToken = validateRefreshTokenBody(req.body);
+
+  await authService.logout(refreshToken);
+  res.status(204).send();
 });

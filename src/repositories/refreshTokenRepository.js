@@ -36,6 +36,22 @@ class RefreshTokenRepository {
       rethrowDatabaseError(error);
     }
   }
+
+  async findByTokenHash(tokenHash) {
+    try {
+      return await this.getCollection().findOne({ token_hash: tokenHash });
+    } catch (error) {
+      rethrowDatabaseError(error);
+    }
+  }
+
+  async deleteById(id) {
+    try {
+      return await this.getCollection().deleteOne({ id });
+    } catch (error) {
+      rethrowDatabaseError(error);
+    }
+  }
 }
 
 export const refreshTokenRepository = new RefreshTokenRepository();

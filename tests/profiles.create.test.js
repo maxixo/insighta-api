@@ -1,15 +1,19 @@
 import request from 'supertest';
 import { vi } from 'vitest';
 
+import { USER_ROLES } from '../src/constants/auth.js';
 import app from '../src/app.js';
+import { createAuthorizationHeader, createAuthorizedUser } from './helpers/auth.js';
 import { mockEnrichmentFetch } from './helpers/mockFetch.js';
 
 describe('POST /api/v1/profiles', () => {
   it('creates a profile with normalized name and enrichment data', async () => {
     vi.stubGlobal('fetch', mockEnrichmentFetch());
+    const { accessToken } = await createAuthorizedUser({ role: USER_ROLES.admin });
 
     const response = await request(app)
       .post('/api/v1/profiles')
+      .set('Authorization', createAuthorizationHeader(accessToken))
       .send({ name: '  Ella  ' });
 
     expect(response.status).toBe(201);
@@ -27,13 +31,16 @@ describe('POST /api/v1/profiles', () => {
 
   it('returns the existing profile for idempotent create', async () => {
     vi.stubGlobal('fetch', mockEnrichmentFetch());
+    const { accessToken } = await createAuthorizedUser({ role: USER_ROLES.admin });
 
     const firstResponse = await request(app)
       .post('/api/v1/profiles')
+      .set('Authorization', createAuthorizationHeader(accessToken))
       .send({ name: 'ella' });
 
     const secondResponse = await request(app)
       .post('/api/v1/profiles')
+      .set('Authorization', createAuthorizationHeader(accessToken))
       .send({ name: ' Ella ' });
 
     expect(firstResponse.status).toBe(201);
@@ -43,8 +50,15 @@ describe('POST /api/v1/profiles', () => {
   });
 
   it('returns validation errors for invalid request bodies', async () => {
-    const missingName = await request(app).post('/api/v1/profiles').send({});
-    const invalidType = await request(app).post('/api/v1/profiles').send({ name: 42 });
+    const { accessToken } = await createAuthorizedUser({ role: USER_ROLES.admin });
+    const missingName = await request(app)
+      .post('/api/v1/profiles')
+      .set('Authorization', createAuthorizationHeader(accessToken))
+      .send({});
+    const invalidType = await request(app)
+      .post('/api/v1/profiles')
+      .set('Authorization', createAuthorizationHeader(accessToken))
+      .send({ name: 42 });
 
     expect(missingName.status).toBe(400);
     expect(missingName.body).toEqual({ status: 'error', message: 'Name is required' });
@@ -53,8 +67,10 @@ describe('POST /api/v1/profiles', () => {
   });
 
   it('returns invalid json body errors', async () => {
+    const { accessToken } = await createAuthorizedUser({ role: USER_ROLES.admin });
     const response = await request(app)
       .post('/api/v1/profiles')
+      .set('Authorization', createAuthorizationHeader(accessToken))
       .set('Content-Type', 'application/json')
       .send('{"name":');
 
@@ -73,15 +89,32 @@ describe('POST /api/v1/profiles', () => {
         }
       }))
     );
+    const { accessToken } = await createAuthorizedUser({ role: USER_ROLES.admin });
 
     const response = await request(app)
       .post('/api/v1/profiles')
+      .set('Authorization', createAuthorizationHeader(accessToken))
       .send({ name: 'ella' });
 
     expect(response.status).toBe(502);
     expect(response.body).toEqual({
       status: 'error',
       message: 'Upstream enrichment service failed'
+    });
+  });
+
+  it('rejects analyst users from creating profiles', async () => {
+    const { accessToken } = await createAuthorizedUser({ role: USER_ROLES.analyst });
+
+    const response = await request(app)
+      .post('/api/v1/profiles')
+      .set('Authorization', createAuthorizationHeader(accessToken))
+      .send({ name: 'ella' });
+
+    expect(response.status).toBe(403);
+    expect(response.body).toEqual({
+      status: 'error',
+      message: 'Forbidden'
     });
   });
 });
