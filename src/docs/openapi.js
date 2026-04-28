@@ -49,6 +49,38 @@ export default {
           name: { type: 'string', example: 'ella' }
         }
       },
+      AuthLoginRequest: {
+        type: 'object',
+        minProperties: 1,
+        additionalProperties: true,
+        description:
+          'Planned credential payload. Exact login fields will be finalized when runtime auth support is implemented.'
+      },
+      AuthRefreshRequest: {
+        type: 'object',
+        required: ['refresh_token'],
+        properties: {
+          refresh_token: { type: 'string', example: 'refresh-token' }
+        }
+      },
+      AuthTokenData: {
+        type: 'object',
+        required: ['access_token', 'refresh_token', 'token_type', 'expires_in'],
+        properties: {
+          access_token: { type: 'string', example: 'token' },
+          refresh_token: { type: 'string', example: 'token' },
+          token_type: { type: 'string', example: 'Bearer' },
+          expires_in: { type: 'integer', example: 900 }
+        }
+      },
+      AuthSuccessResponse: {
+        type: 'object',
+        required: ['status', 'data'],
+        properties: {
+          status: { type: 'string', example: 'success' },
+          data: { $ref: '#/components/schemas/AuthTokenData' }
+        }
+      },
       SuccessResponse: {
         type: 'object',
         properties: {
@@ -87,6 +119,72 @@ export default {
         responses: {
           200: {
             description: 'Service health information'
+          }
+        }
+      }
+    },
+    '/api/v1/auth/login': {
+      post: {
+        summary: 'Planned auth login contract',
+        description:
+          'This route is documented for client contract planning only. The current backend does not yet implement runtime auth support.',
+        requestBody: {
+          required: true,
+          content: {
+            'application/json': {
+              schema: { $ref: '#/components/schemas/AuthLoginRequest' }
+            }
+          }
+        },
+        responses: {
+          200: {
+            description: 'Access and refresh tokens issued',
+            content: {
+              'application/json': {
+                schema: { $ref: '#/components/schemas/AuthSuccessResponse' }
+              }
+            }
+          },
+          401: {
+            description: 'Invalid credentials',
+            content: {
+              'application/json': {
+                schema: { $ref: '#/components/schemas/ErrorResponse' }
+              }
+            }
+          }
+        }
+      }
+    },
+    '/api/v1/auth/refresh': {
+      post: {
+        summary: 'Planned token refresh contract',
+        description:
+          'This route is documented for client contract planning only. Successful refresh rotates both the access token and the refresh token.',
+        requestBody: {
+          required: true,
+          content: {
+            'application/json': {
+              schema: { $ref: '#/components/schemas/AuthRefreshRequest' }
+            }
+          }
+        },
+        responses: {
+          200: {
+            description: 'New access and refresh tokens issued',
+            content: {
+              'application/json': {
+                schema: { $ref: '#/components/schemas/AuthSuccessResponse' }
+              }
+            }
+          },
+          401: {
+            description: 'Invalid or expired refresh token',
+            content: {
+              'application/json': {
+                schema: { $ref: '#/components/schemas/ErrorResponse' }
+              }
+            }
           }
         }
       }

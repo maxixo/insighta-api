@@ -155,6 +155,69 @@ Example response:
 }
 ```
 
+### Planned auth contract
+
+The following auth routes are part of the published API contract, but they are not implemented by the current backend yet.
+
+### `POST /api/v1/auth/login`
+
+Planned login route for issuing bearer tokens to web and CLI clients.
+
+Success response:
+
+```json
+{
+  "status": "success",
+  "data": {
+    "access_token": "token",
+    "refresh_token": "token",
+    "token_type": "Bearer",
+    "expires_in": 900
+  }
+}
+```
+
+Failure response:
+
+```json
+{
+  "status": "error",
+  "message": "Invalid credentials"
+}
+```
+
+### `POST /api/v1/auth/refresh`
+
+Planned refresh route for rotating both tokens through a JSON request body.
+
+Request:
+
+```json
+{
+  "refresh_token": "token"
+}
+```
+
+Success response:
+
+```json
+{
+  "status": "success",
+  "data": {
+    "access_token": "token",
+    "refresh_token": "token",
+    "token_type": "Bearer",
+    "expires_in": 900
+  }
+}
+```
+
+Behavior:
+
+- Accepts refresh tokens in a JSON request body
+- Rotates both `access_token` and `refresh_token` after a successful refresh
+- Returns `401 Unauthorized` for invalid or expired refresh tokens
+
 ### `POST /api/v1/profiles`
 
 Create or idempotently reuse a profile.
@@ -327,6 +390,7 @@ http://<api-host>/api/v1
 
 Recommended frontend usage:
 
+- Future auth flow: `POST /api/v1/auth/login` and `POST /api/v1/auth/refresh`
 - Portal create flow: `POST /api/v1/profiles`
 - Portal list pages: `GET /api/v1/profiles`
 - Portal search box: `GET /api/v1/profiles/search?q=...`
