@@ -58,15 +58,17 @@ class ProfileRepository {
     }
   }
 
-  async listProfiles({ filter, sort, skip, limit }) {
+  async countProfiles(filter) {
     try {
-      const collection = this.getCollection();
-      const [total, data] = await Promise.all([
-        collection.countDocuments(filter),
-        collection.find(filter).sort(sort).skip(skip).limit(limit).toArray()
-      ]);
+      return await this.getCollection().countDocuments(filter);
+    } catch (error) {
+      rethrowDatabaseError(error);
+    }
+  }
 
-      return { total, data };
+  async findMany(filter, sort, skip, limit) {
+    try {
+      return await this.getCollection().find(filter).sort(sort).skip(skip).limit(limit).toArray();
     } catch (error) {
       rethrowDatabaseError(error);
     }
