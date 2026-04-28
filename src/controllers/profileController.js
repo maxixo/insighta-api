@@ -1,7 +1,19 @@
 import { profileService } from '../services/profileService.js';
 import { asyncHandler } from '../utils/asyncHandler.js';
+import { buildPaginatedResponse } from '../utils/pagination.js';
 import { validateCreateProfileBody, validateProfileId } from '../validators/profileValidators.js';
 import { validateListQuery, validateSearchQuery } from '../validators/queryValidators.js';
+
+function buildProfileListResponse(req, queryOptions, result) {
+  return buildPaginatedResponse({
+    path: req.path === '/' ? req.baseUrl : `${req.baseUrl}${req.path}`,
+    query: req.query,
+    page: queryOptions.page,
+    limit: queryOptions.limit,
+    total: result.total,
+    data: result.data
+  });
+}
 
 export const createProfile = asyncHandler(async (req, res) => {
   const normalizedName = validateCreateProfileBody(req.body);
@@ -26,26 +38,14 @@ export const listProfiles = asyncHandler(async (req, res) => {
   const queryOptions = validateListQuery(req.query);
   const result = await profileService.listProfiles(queryOptions);
 
-  res.status(200).json({
-    status: 'success',
-    page: queryOptions.page,
-    limit: queryOptions.limit,
-    total: result.total,
-    data: result.data
-  });
+  res.status(200).json(buildProfileListResponse(req, queryOptions, result));
 });
 
 export const searchProfiles = asyncHandler(async (req, res) => {
   const queryOptions = validateSearchQuery(req.query);
   const result = await profileService.searchProfiles(queryOptions);
 
-  res.status(200).json({
-    status: 'success',
-    page: queryOptions.page,
-    limit: queryOptions.limit,
-    total: result.total,
-    data: result.data
-  });
+  res.status(200).json(buildProfileListResponse(req, queryOptions, result));
 });
 
 export const getProfileById = asyncHandler(async (req, res) => {

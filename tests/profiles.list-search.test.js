@@ -60,6 +60,12 @@ describe('GET /api/v1/profiles and /api/v1/profiles/search', () => {
     expect(response.body.page).toBe(1);
     expect(response.body.limit).toBe(2);
     expect(response.body.total).toBe(2);
+    expect(response.body.total_pages).toBe(1);
+    expect(response.body.links).toEqual({
+      self: '/api/v1/profiles?gender=female&sort_by=age&order=desc&page=1&limit=2',
+      next: null,
+      prev: null
+    });
     expect(response.body.data.map((profile) => profile.name)).toEqual(['martha', 'ella']);
   });
 
@@ -77,6 +83,12 @@ describe('GET /api/v1/profiles and /api/v1/profiles/search', () => {
 
     expect(clamped.status).toBe(200);
     expect(clamped.body.limit).toBe(50);
+    expect(clamped.body.total_pages).toBe(1);
+    expect(clamped.body.links).toEqual({
+      self: '/api/v1/profiles?limit=50&page=1',
+      next: null,
+      prev: null
+    });
     expect(invalidRange.status).toBe(400);
     expect(invalidRange.body).toEqual({ status: 'error', message: 'Invalid query parameters' });
     expect(invalidType.status).toBe(422);
@@ -91,6 +103,12 @@ describe('GET /api/v1/profiles and /api/v1/profiles/search', () => {
 
     expect(response.status).toBe(200);
     expect(response.body.total).toBe(0);
+    expect(response.body.total_pages).toBe(0);
+    expect(response.body.links).toEqual({
+      self: '/api/v1/profiles/search?q=young+females+from+nigeria&sort_by=created_at&order=asc&page=1&limit=10',
+      next: null,
+      prev: null
+    });
   });
 
   it('supports comparator and country search rules', async () => {
@@ -101,7 +119,33 @@ describe('GET /api/v1/profiles and /api/v1/profiles/search', () => {
 
     expect(response.status).toBe(200);
     expect(response.body.total).toBe(1);
+    expect(response.body.total_pages).toBe(1);
+    expect(response.body.links).toEqual({
+      self: '/api/v1/profiles/search?q=older+than+30+from+united+kingdom&page=1&limit=10',
+      next: null,
+      prev: null
+    });
     expect(response.body.data[0].name).toBe('martha');
+  });
+
+  it('returns navigation links for multi-page list responses', async () => {
+    const { accessToken } = await createAuthorizedUser({ role: USER_ROLES.analyst });
+    const response = await request(app)
+      .get('/api/v1/profiles?page=2&limit=1&sort_by=created_at&order=asc')
+      .set(createApiVersionHeaders(accessToken));
+
+    expect(response.status).toBe(200);
+    expect(response.body.page).toBe(2);
+    expect(response.body.limit).toBe(1);
+    expect(response.body.total).toBe(3);
+    expect(response.body.total_pages).toBe(3);
+    expect(response.body.links).toEqual({
+      self: '/api/v1/profiles?page=2&limit=1&sort_by=created_at&order=asc',
+      next: '/api/v1/profiles?page=3&limit=1&sort_by=created_at&order=asc',
+      prev: '/api/v1/profiles?page=1&limit=1&sort_by=created_at&order=asc'
+    });
+    expect(response.body.data).toHaveLength(1);
+    expect(response.body.data[0].name).toBe('john');
   });
 
   it('returns an interpretation error when no search rule matches', async () => {
