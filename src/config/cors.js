@@ -9,6 +9,10 @@ function getAllowedOrigins() {
 }
 
 export function createCorsMiddleware() {
+  if (env.CORS_ORIGIN === '*') {
+    return cors({ origin: '*' });
+  }
+
   const allowedOrigins = getAllowedOrigins();
 
   return cors({
@@ -23,7 +27,7 @@ export function createCorsMiddleware() {
         return;
       }
 
-      callback(new Error('Not allowed by CORS'));
+      callback(null, false);
     }
   });
 }

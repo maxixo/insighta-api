@@ -265,6 +265,37 @@ export default {
         }
       }
     },
+    '/health/ready': {
+      get: {
+        summary: 'Readiness check',
+        responses: {
+          200: {
+            description: 'Service dependencies are ready',
+            content: {
+              'application/json': {
+                example: {
+                  status: 'success',
+                  data: {
+                    database: 'ready'
+                  }
+                }
+              }
+            }
+          },
+          503: {
+            description: 'A required dependency is not ready',
+            content: {
+              'application/json': {
+                example: {
+                  status: 'error',
+                  message: 'Database not ready'
+                }
+              }
+            }
+          }
+        }
+      }
+    },
     '/api/v1/auth/login': {
       post: {
         summary: 'Planned auth login contract',

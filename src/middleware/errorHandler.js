@@ -27,6 +27,10 @@ export function errorHandler(error, _req, res, _next) {
     return;
   }
 
+  if (process.env.NODE_ENV !== 'test') {
+    console.error(error);
+  }
+
   res.status(500).json({
     status: 'error',
     message: 'Internal server error'

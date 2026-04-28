@@ -15,4 +15,25 @@ describe('GET /health', () => {
       }
     });
   });
+
+  it('returns readiness for deployment probes', async () => {
+    const response = await request(app).get('/health/ready');
+
+    expect(response.status).toBe(200);
+    expect(response.body).toEqual({
+      status: 'success',
+      data: {
+        database: 'ready'
+      }
+    });
+  });
+
+  it('allows requests from any origin', async () => {
+    const response = await request(app)
+      .get('/health')
+      .set('Origin', 'https://blocked.example.com');
+
+    expect(response.status).toBe(200);
+    expect(response.headers['access-control-allow-origin']).toBe('*');
+  });
 });
