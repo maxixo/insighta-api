@@ -1,9 +1,10 @@
 import { Router } from 'express';
 
-import { redirectToGithub } from '../controllers/authController.js';
+import { handleGithubCallback, redirectToGithub } from '../controllers/authController.js';
 
 const router = Router();
 
 router.get('/github', redirectToGithub);
+router.get('/github/callback', handleGithubCallback);
 
 export default router;

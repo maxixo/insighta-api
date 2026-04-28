@@ -74,10 +74,19 @@ export const env = Object.freeze({
   GITHUB_SCOPE: parseOptionalString(process.env.GITHUB_SCOPE) || 'read:user user:email',
   GITHUB_AUTHORIZE_URL:
     parseOptionalString(process.env.GITHUB_AUTHORIZE_URL) || 'https://github.com/login/oauth/authorize',
+  GITHUB_TOKEN_URL:
+    parseOptionalString(process.env.GITHUB_TOKEN_URL) || 'https://github.com/login/oauth/access_token',
   GITHUB_REDIRECT_URI:
     parseOptionalString(process.env.GITHUB_REDIRECT_URI) || `${appBaseUrl}/auth/github/callback`,
+  GITHUB_USER_URL: parseOptionalString(process.env.GITHUB_USER_URL) || 'https://api.github.com/user',
+  GITHUB_USER_EMAILS_URL:
+    parseOptionalString(process.env.GITHUB_USER_EMAILS_URL) || 'https://api.github.com/user/emails',
   AUTH_COOKIE_SECURE: parseBoolean(process.env.AUTH_COOKIE_SECURE, nodeEnv === 'production'),
   AUTH_PKCE_COOKIE_MAX_AGE_MS: parseInteger(process.env.AUTH_PKCE_COOKIE_MAX_AGE_MS, 600_000, { min: 1 }),
+  ACCESS_TOKEN_SECRET: parseOptionalString(process.env.ACCESS_TOKEN_SECRET) || '',
+  REFRESH_TOKEN_SECRET: parseOptionalString(process.env.REFRESH_TOKEN_SECRET) || '',
+  ACCESS_TOKEN_TTL_SECONDS: parseInteger(process.env.ACCESS_TOKEN_TTL_SECONDS, 180, { min: 1 }),
+  REFRESH_TOKEN_TTL_SECONDS: parseInteger(process.env.REFRESH_TOKEN_TTL_SECONDS, 300, { min: 1 }),
   ENABLE_DOCS: parseBoolean(process.env.ENABLE_DOCS, nodeEnv !== 'production'),
   TRUST_PROXY: parseBoolean(process.env.TRUST_PROXY, nodeEnv === 'production'),
   RATE_LIMIT_ENABLED: parseBoolean(process.env.RATE_LIMIT_ENABLED, nodeEnv !== 'test'),

@@ -3,6 +3,8 @@ import { MongoMemoryServer } from 'mongodb-memory-server';
 
 import { mongoManager } from '../src/db/mongo.js';
 import { profileRepository } from '../src/repositories/profileRepository.js';
+import { refreshTokenRepository } from '../src/repositories/refreshTokenRepository.js';
+import { userRepository } from '../src/repositories/userRepository.js';
 
 let mongoServer;
 
@@ -16,10 +18,14 @@ beforeAll(async () => {
   });
 
   await profileRepository.ensureIndexes();
+  await userRepository.ensureIndexes();
+  await refreshTokenRepository.ensureIndexes();
 });
 
 beforeEach(async () => {
   await mongoManager.getCollection('profiles').deleteMany({});
+  await mongoManager.getCollection('users').deleteMany({});
+  await mongoManager.getCollection('refresh_tokens').deleteMany({});
 });
 
 afterEach(() => {

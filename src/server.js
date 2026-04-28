@@ -2,10 +2,14 @@ import app from './app.js';
 import { env } from './config/env.js';
 import { mongoManager } from './db/mongo.js';
 import { profileRepository } from './repositories/profileRepository.js';
+import { refreshTokenRepository } from './repositories/refreshTokenRepository.js';
+import { userRepository } from './repositories/userRepository.js';
 
 async function startServer() {
   await mongoManager.connect();
   await profileRepository.ensureIndexes();
+  await userRepository.ensureIndexes();
+  await refreshTokenRepository.ensureIndexes();
 
   const server = app.listen(env.PORT, () => {
     console.log(`Profile Intelligence API listening on port ${env.PORT}`);
