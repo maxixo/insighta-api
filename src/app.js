@@ -9,6 +9,8 @@ import openApiDocument from './docs/openapi.js';
 import { errorHandler } from './middleware/errorHandler.js';
 import { notFoundHandler } from './middleware/notFound.js';
 import { createRateLimiter } from './middleware/rateLimiter.js';
+import { requireActiveUser } from './middleware/requireActiveUser.js';
+import { requireAuth } from './middleware/requireAuth.js';
 import authRoutes from './routes/authRoutes.js';
 import healthRoutes from './routes/healthRoutes.js';
 import profileRoutes from './routes/profileRoutes.js';
@@ -34,6 +36,7 @@ export function createApp() {
   }
   app.use('/health', healthRoutes);
   app.use('/auth', authRoutes);
+  app.use('/api', requireAuth, requireActiveUser);
   app.use('/api/v1/profiles', profileRoutes);
 
   app.use(notFoundHandler);

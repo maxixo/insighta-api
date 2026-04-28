@@ -4,34 +4,7 @@ import { createApp } from '../src/app.js';
 import { mongoManager } from '../src/db/mongo.js';
 import { authService } from '../src/services/authService.js';
 import { verifyToken } from '../src/utils/tokens.js';
-
-const TOKEN_ENV_OVERRIDES = {
-  ACCESS_TOKEN_SECRET: 'test-access-secret',
-  REFRESH_TOKEN_SECRET: 'test-refresh-secret',
-  ACCESS_TOKEN_TTL_SECONDS: '180',
-  REFRESH_TOKEN_TTL_SECONDS: '300'
-};
-
-function applyTokenEnvOverrides() {
-  Object.entries(TOKEN_ENV_OVERRIDES).forEach(([key, value]) => {
-    process.env[key] = value;
-  });
-}
-
-function createUser(overrides = {}) {
-  return {
-    id: '018f4f5c-6a90-7a33-b9d8-3c4f0e8b9f7a',
-    github_id: '12345',
-    username: 'octocat',
-    email: 'octocat@example.com',
-    avatar_url: 'https://avatars.githubusercontent.com/u/12345',
-    role: 'analyst',
-    is_active: true,
-    created_at: '2026-04-15T08:00:00Z',
-    last_login_at: '2026-04-15T08:00:00Z',
-    ...overrides
-  };
-}
+import { applyTokenEnvOverrides, createAuthUser } from './helpers/auth.js';
 
 describe('auth session lifecycle', () => {
   beforeEach(() => {
@@ -40,7 +13,7 @@ describe('auth session lifecycle', () => {
 
   it('rotates the refresh token and invalidates the previous token on refresh', async () => {
     const app = createApp();
-    const user = createUser();
+    const user = createAuthUser();
 
     await mongoManager.getCollection('users').insertOne(user);
 
@@ -74,7 +47,7 @@ describe('auth session lifecycle', () => {
 
   it('invalidates the submitted refresh token on logout', async () => {
     const app = createApp();
-    const user = createUser();
+    const user = createAuthUser();
 
     await mongoManager.getCollection('users').insertOne(user);
 
