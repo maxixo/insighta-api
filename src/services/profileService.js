@@ -11,6 +11,16 @@ function isDuplicateKeyError(error) {
 }
 
 class ProfileService {
+  async queryProfiles(options) {
+    const { filter, sort, skip, limit } = options;
+    const [total, data] = await Promise.all([
+      profileRepository.countProfiles(filter),
+      profileRepository.findMany(filter, sort, skip, limit)
+    ]);
+
+    return { total, data };
+  }
+
   async createProfile(name) {
     const existingProfile = await profileRepository.findByName(name);
 
@@ -63,7 +73,7 @@ class ProfileService {
   }
 
   async listProfiles(options) {
-    return profileRepository.listProfiles(options);
+    return this.queryProfiles(options);
   }
 
   async searchProfiles(options) {
@@ -105,7 +115,7 @@ class ProfileService {
       throw new AppError(400, 'Unable to interpret query');
     }
 
-    return profileRepository.listProfiles({
+    return this.queryProfiles({
       ...options,
       filter: combinedFilter
     });
