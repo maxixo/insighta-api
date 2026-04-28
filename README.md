@@ -285,6 +285,30 @@ Example:
 curl "http://localhost:4000/api/v1/profiles?gender=female&sort_by=age&order=desc&page=1&limit=10"
 ```
 
+### `GET /api/v1/profiles/export.csv`
+
+Planned CSV export route for CLI and backend consumers. This route is part of the published contract, but it is not implemented by the current backend yet.
+
+Behavior:
+
+- Uses the same filter and sort query parameters as `GET /api/v1/profiles`
+- Does not paginate export responses
+- Returns `Content-Type: text/csv; charset=utf-8`
+- Returns `Content-Disposition: attachment; filename="profiles-export.csv"`
+
+CSV column order:
+
+- `id`
+- `name`
+- `gender`
+- `gender_probability`
+- `age`
+- `age_group`
+- `country_id`
+- `country_name`
+- `country_probability`
+- `created_at`
+
 ### `GET /api/v1/profiles/search?q=...`
 
 Deterministic natural-language search rules:
@@ -393,6 +417,7 @@ Recommended frontend usage:
 - Future auth flow: `POST /api/v1/auth/login` and `POST /api/v1/auth/refresh`
 - Portal create flow: `POST /api/v1/profiles`
 - Portal list pages: `GET /api/v1/profiles`
+- Future CLI export flow: `GET /api/v1/profiles/export.csv`
 - Portal search box: `GET /api/v1/profiles/search?q=...`
 - CLI integration: same endpoints using JSON over HTTP
 

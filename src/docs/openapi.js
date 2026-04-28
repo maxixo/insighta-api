@@ -282,6 +282,60 @@ export default {
         }
       }
     },
+    '/api/v1/profiles/export.csv': {
+      get: {
+        summary: 'Planned CSV export contract',
+        description:
+          'This route is documented for client contract planning only. Export responses use the same filter and sort parameters as the profile list endpoint, but they do not paginate.',
+        parameters: [
+          { in: 'query', name: 'gender', schema: { type: 'string', enum: ['male', 'female'] } },
+          {
+            in: 'query',
+            name: 'age_group',
+            schema: { type: 'string', enum: ['child', 'teenager', 'adult', 'senior'] }
+          },
+          { in: 'query', name: 'country_id', schema: { type: 'string', example: 'NG' } },
+          { in: 'query', name: 'min_age', schema: { type: 'integer' } },
+          { in: 'query', name: 'max_age', schema: { type: 'integer' } },
+          { in: 'query', name: 'min_gender_probability', schema: { type: 'number' } },
+          { in: 'query', name: 'min_country_probability', schema: { type: 'number' } },
+          { in: 'query', name: 'sort_by', schema: { type: 'string', enum: ['age', 'created_at', 'gender_probability'] } },
+          { in: 'query', name: 'order', schema: { type: 'string', enum: ['asc', 'desc'] } }
+        ],
+        responses: {
+          200: {
+            description: 'CSV export of matching profiles',
+            headers: {
+              'Content-Type': {
+                description: 'CSV media type with UTF-8 charset',
+                schema: { type: 'string', example: 'text/csv; charset=utf-8' }
+              },
+              'Content-Disposition': {
+                description: 'Attachment filename for the exported file',
+                schema: { type: 'string', example: 'attachment; filename=\"profiles-export.csv\"' }
+              }
+            },
+            content: {
+              'text/csv': {
+                schema: {
+                  type: 'string',
+                  example:
+                    'id,name,gender,gender_probability,age,age_group,country_id,country_name,country_probability,created_at'
+                }
+              }
+            }
+          },
+          400: {
+            description: 'Invalid query parameters',
+            content: {
+              'application/json': {
+                schema: { $ref: '#/components/schemas/ErrorResponse' }
+              }
+            }
+          }
+        }
+      }
+    },
     '/api/v1/profiles/search': {
       get: {
         summary: 'Deterministic natural-language profile search',
