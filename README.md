@@ -296,6 +296,7 @@ Supports:
 - Filters: `gender`, `age_group`, `country_id`, `min_age`, `max_age`, `min_gender_probability`, `min_country_probability`
 - Sorting: `sort_by=age|created_at|gender_probability`, `order=asc|desc`
 - Pagination: `page`, `limit` with limit clamped to `50`
+- Validation: semantic query errors return `400`, while invalid numeric formats such as `min_age=abc` return `422`
 
 Example:
 
@@ -350,6 +351,7 @@ Behavior:
 - Does not paginate export responses
 - Returns `Content-Type: text/csv; charset=utf-8`
 - Returns `Content-Disposition: attachment; filename="profiles-export.csv"`
+- Uses the same query validation rules as `GET /api/v1/profiles`, including `400` semantic validation errors and `422` invalid numeric formats
 
 CSV column order:
 
@@ -387,6 +389,7 @@ Deterministic natural-language search rules:
 - Special token: `young` maps to ages `16` through `24`
 - Comparators: `above 30`, `over 30`, `older than 30`, `below 20`, `under 20`, `younger than 20`
 - Country phrases: `from nigeria`, `from united kingdom`
+- Filter, sort, and pagination parameters follow the same validation rules as `GET /api/v1/profiles`
 
 Example:
 
@@ -467,18 +470,21 @@ All API errors use:
 }
 ```
 
-Common messages preserved by the implementation:
+Common error messages returned by the current backend:
 
 - `Invalid query parameters`
 - `Unable to interpret query`
 - `Database error`
-- `Profile already exists`
+- `Internal server error`
 - `Profile not found`
 - `Invalid JSON body`
 - `Name is required`
 - `Name must be a string`
-- `Profile id is required`
-- `Profile id must be a string`
+- `Upstream enrichment service failed`
+
+Common non-error success message:
+
+- `Profile already exists`
 
 ## Seed Data
 

@@ -375,6 +375,15 @@ export default {
                 example: exampleErrors.invalidQuery
               }
             }
+          },
+          422: {
+            description: 'Invalid numeric query parameter format',
+            content: {
+              'application/json': {
+                schema: { $ref: '#/components/schemas/ErrorResponse' },
+                example: exampleErrors.invalidQuery
+              }
+            }
           }
         }
       },
@@ -497,6 +506,15 @@ export default {
                 example: exampleErrors.invalidQuery
               }
             }
+          },
+          422: {
+            description: 'Invalid numeric query parameter format',
+            content: {
+              'application/json': {
+                schema: { $ref: '#/components/schemas/ErrorResponse' },
+                example: exampleErrors.invalidQuery
+              }
+            }
           }
         }
       }
@@ -527,6 +545,15 @@ export default {
               'application/json': {
                 schema: { $ref: '#/components/schemas/ErrorResponse' },
                 example: exampleErrors.unableToInterpretQuery
+              }
+            }
+          },
+          422: {
+            description: 'Invalid numeric query parameter format',
+            content: {
+              'application/json': {
+                schema: { $ref: '#/components/schemas/ErrorResponse' },
+                example: exampleErrors.invalidQuery
               }
             }
           }
