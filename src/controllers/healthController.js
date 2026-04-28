@@ -13,3 +13,22 @@ export const getHealth = asyncHandler(async (_req, res) => {
     }
   });
 });
+
+export const getReadiness = asyncHandler(async (_req, res) => {
+  const databaseReady = await mongoManager.ping();
+
+  if (!databaseReady) {
+    res.status(503).json({
+      status: 'error',
+      message: 'Database not ready'
+    });
+    return;
+  }
+
+  res.status(200).json({
+    status: 'success',
+    data: {
+      database: 'ready'
+    }
+  });
+});

@@ -1,33 +1,80 @@
 import 'dotenv/config';
 
-const DEFAULT_CORS_ORIGINS = [
-  'http://localhost:3000',
-  'http://127.0.0.1:3000',
-  'http://localhost:3001',
-  'http://127.0.0.1:3001'
-].join(',');
+const DEFAULT_CORS_ORIGINS = '*';
 
 const DEFAULT_SEED_SOURCE =
   'https://drive.google.com/uc?export=download&id=1Up06dcS9OfUEnDj_u6OV_xTRntupFhPH';
 
-function parsePort(value) {
-  const parsed = Number.parseInt(value ?? '4000', 10);
+const VALID_NODE_ENVS = new Set(['development', 'test', 'production']);
 
-  if (!Number.isInteger(parsed) || parsed <= 0) {
-    return 4000;
+function parseInteger(value, fallback, { min = Number.MIN_SAFE_INTEGER, max = Number.MAX_SAFE_INTEGER } = {}) {
+  if (value === undefined || value === null || value === '') {
+    return fallback;
+  }
+
+  const parsed = Number.parseInt(value, 10);
+
+  if (!Number.isInteger(parsed) || parsed < min || parsed > max) {
+    return fallback;
   }
 
   return parsed;
 }
 
-export const env = {
+function parseBoolean(value, fallback) {
+  if (value === undefined || value === null || value === '') {
+    return fallback;
+  }
+
+  const normalized = value.trim().toLowerCase();
+
+  if (['true', '1', 'yes', 'on'].includes(normalized)) {
+    return true;
+  }
+
+  if (['false', '0', 'no', 'off'].includes(normalized)) {
+    return false;
+  }
+
+  return fallback;
+}
+
+function parsePort(value) {
+  return parseInteger(value ?? '4000', 4000, { min: 1, max: 65535 });
+}
+
+function parseNodeEnv(value) {
+  const normalized = value?.trim() || 'development';
+  return VALID_NODE_ENVS.has(normalized) ? normalized : 'development';
+}
+
+function parseCorsOrigin(value) {
+  return value?.trim() || DEFAULT_CORS_ORIGINS;
+}
+
+const nodeEnv = parseNodeEnv(process.env.NODE_ENV);
+
+export const env = Object.freeze({
   PORT: parsePort(process.env.PORT),
-  NODE_ENV: process.env.NODE_ENV?.trim() || 'development',
+  NODE_ENV: nodeEnv,
   MONGO_URI: process.env.MONGO_URI?.trim() || 'mongodb://127.0.0.1:27017',
   DB_NAME: process.env.DB_NAME?.trim() || 'profile_db',
-  CORS_ORIGIN: process.env.CORS_ORIGIN?.trim() || DEFAULT_CORS_ORIGINS,
-  SEED_PROFILES_SOURCE: process.env.SEED_PROFILES_SOURCE?.trim() || DEFAULT_SEED_SOURCE
-};
+  CORS_ORIGIN: parseCorsOrigin(process.env.CORS_ORIGIN),
+  SEED_PROFILES_SOURCE: process.env.SEED_PROFILES_SOURCE?.trim() || DEFAULT_SEED_SOURCE,
+  ENABLE_DOCS: parseBoolean(process.env.ENABLE_DOCS, nodeEnv !== 'production'),
+  TRUST_PROXY: parseBoolean(process.env.TRUST_PROXY, nodeEnv === 'production'),
+  RATE_LIMIT_ENABLED: parseBoolean(process.env.RATE_LIMIT_ENABLED, nodeEnv !== 'test'),
+  RATE_LIMIT_WINDOW_MS: parseInteger(process.env.RATE_LIMIT_WINDOW_MS, 60_000, { min: 1 }),
+  AUTH_RATE_LIMIT_MAX_REQUESTS: parseInteger(process.env.AUTH_RATE_LIMIT_MAX_REQUESTS, 10, { min: 1 }),
+  RATE_LIMIT_MAX_REQUESTS: parseInteger(process.env.RATE_LIMIT_MAX_REQUESTS, 60, { min: 1 }),
+  REQUEST_TIMEOUT_MS: parseInteger(process.env.REQUEST_TIMEOUT_MS, 15_000, { min: 1 }),
+  HEADERS_TIMEOUT_MS: parseInteger(process.env.HEADERS_TIMEOUT_MS, 16_000, { min: 1 }),
+  KEEP_ALIVE_TIMEOUT_MS: parseInteger(process.env.KEEP_ALIVE_TIMEOUT_MS, 5_000, { min: 1 }),
+  SHUTDOWN_TIMEOUT_MS: parseInteger(process.env.SHUTDOWN_TIMEOUT_MS, 10_000, { min: 1 }),
+  MONGO_SERVER_SELECTION_TIMEOUT_MS: parseInteger(process.env.MONGO_SERVER_SELECTION_TIMEOUT_MS, 5_000, { min: 1 }),
+  MONGO_MAX_POOL_SIZE: parseInteger(process.env.MONGO_MAX_POOL_SIZE, 20, { min: 1 }),
+  MONGO_MIN_POOL_SIZE: parseInteger(process.env.MONGO_MIN_POOL_SIZE, 0, { min: 0 })
+});
 
 export function isTestEnvironment() {
   return env.NODE_ENV === 'test';

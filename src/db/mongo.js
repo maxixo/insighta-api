@@ -25,7 +25,11 @@ class MongoConnectionManager {
     }
 
     try {
-      this.client = new MongoClient(uri);
+      this.client = new MongoClient(uri, {
+        maxPoolSize: env.MONGO_MAX_POOL_SIZE,
+        minPoolSize: env.MONGO_MIN_POOL_SIZE,
+        serverSelectionTimeoutMS: env.MONGO_SERVER_SELECTION_TIMEOUT_MS
+      });
       await this.client.connect();
       this.db = this.client.db(dbName);
       this.uri = uri;

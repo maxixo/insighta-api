@@ -7,3 +7,5 @@ npm-debug.log*
 yarn-debug.log*
 yarn-error.log*
 pnpm-debug.log*
+src/docs/backend-completion-plan.md
+backend-codex.md

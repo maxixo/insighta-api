@@ -26,6 +26,143 @@ const profileSchema = {
   }
 };
 
+const exampleProfiles = {
+  ella: {
+    id: '018f4f5c-6a90-7a33-b9d8-3c4f0e8b9f7a',
+    name: 'ella',
+    gender: 'female',
+    gender_probability: 0.98,
+    age: 28,
+    age_group: 'adult',
+    country_id: 'NG',
+    country_name: 'Nigeria',
+    country_probability: 0.64,
+    created_at: '2026-04-15T08:00:00Z'
+  },
+  john: {
+    id: '018f4f5c-6a90-7a33-b9d8-3c4f0e8b9f7b',
+    name: 'john',
+    gender: 'male',
+    gender_probability: 0.88,
+    age: 17,
+    age_group: 'teenager',
+    country_id: 'US',
+    country_name: 'United States of America',
+    country_probability: 0.72,
+    created_at: '2026-04-16T08:00:00Z'
+  },
+  martha: {
+    id: '018f4f5c-6a90-7a33-b9d8-3c4f0e8b9f7c',
+    name: 'martha',
+    gender: 'female',
+    gender_probability: 0.9,
+    age: 67,
+    age_group: 'senior',
+    country_id: 'GB',
+    country_name: 'United Kingdom',
+    country_probability: 0.83,
+    created_at: '2026-04-17T08:00:00Z'
+  }
+};
+
+const exampleResponses = {
+  health: {
+    status: 'success',
+    data: {
+      environment: 'development',
+      database: 'ready'
+    }
+  },
+  authLoginRequest: {
+    identifier: 'operator@example.com',
+    password: 'secret'
+  },
+  authRefreshRequest: {
+    refresh_token: 'refresh-token'
+  },
+  authSuccess: {
+    status: 'success',
+    data: {
+      access_token: 'token',
+      refresh_token: 'token',
+      token_type: 'Bearer',
+      expires_in: 900
+    }
+  },
+  list: {
+    status: 'success',
+    page: 1,
+    limit: 2,
+    total: 2,
+    data: [exampleProfiles.martha, exampleProfiles.ella]
+  },
+  search: {
+    status: 'success',
+    page: 1,
+    limit: 10,
+    total: 1,
+    data: [exampleProfiles.martha]
+  },
+  createNew: {
+    status: 'success',
+    data: exampleProfiles.ella
+  },
+  createExisting: {
+    status: 'success',
+    data: exampleProfiles.ella,
+    message: 'Profile already exists'
+  },
+  getById: {
+    status: 'success',
+    data: exampleProfiles.ella
+  }
+};
+
+const exampleErrors = {
+  invalidCredentials: {
+    status: 'error',
+    message: 'Invalid credentials'
+  },
+  invalidRefreshToken: {
+    status: 'error',
+    message: 'Invalid or expired refresh token'
+  },
+  invalidQuery: {
+    status: 'error',
+    message: 'Invalid query parameters'
+  },
+  unableToInterpretQuery: {
+    status: 'error',
+    message: 'Unable to interpret query'
+  },
+  nameRequired: {
+    status: 'error',
+    message: 'Name is required'
+  },
+  invalidNameType: {
+    status: 'error',
+    message: 'Name must be a string'
+  },
+  invalidJsonBody: {
+    status: 'error',
+    message: 'Invalid JSON body'
+  },
+  upstreamEnrichmentFailed: {
+    status: 'error',
+    message: 'Upstream enrichment service failed'
+  },
+  profileNotFound: {
+    status: 'error',
+    message: 'Profile not found'
+  }
+};
+
+const exportCsvExample = [
+  'id,name,gender,gender_probability,age,age_group,country_id,country_name,country_probability,created_at',
+  '018f4f5c-6a90-7a33-b9d8-3c4f0e8b9f7a,ella,female,0.98,28,adult,NG,Nigeria,0.64,2026-04-15T08:00:00Z',
+  '018f4f5c-6a90-7a33-b9d8-3c4f0e8b9f7c,martha,female,0.9,67,senior,GB,United Kingdom,0.83,2026-04-17T08:00:00Z'
+].join('\n');
+
 export default {
   openapi: '3.0.3',
   info: {
@@ -118,7 +255,43 @@ export default {
         summary: 'Health check',
         responses: {
           200: {
-            description: 'Service health information'
+            description: 'Service health information',
+            content: {
+              'application/json': {
+                example: exampleResponses.health
+              }
+            }
+          }
+        }
+      }
+    },
+    '/health/ready': {
+      get: {
+        summary: 'Readiness check',
+        responses: {
+          200: {
+            description: 'Service dependencies are ready',
+            content: {
+              'application/json': {
+                example: {
+                  status: 'success',
+                  data: {
+                    database: 'ready'
+                  }
+                }
+              }
+            }
+          },
+          503: {
+            description: 'A required dependency is not ready',
+            content: {
+              'application/json': {
+                example: {
+                  status: 'error',
+                  message: 'Database not ready'
+                }
+              }
+            }
           }
         }
       }
@@ -132,7 +305,8 @@ export default {
           required: true,
           content: {
             'application/json': {
-              schema: { $ref: '#/components/schemas/AuthLoginRequest' }
+              schema: { $ref: '#/components/schemas/AuthLoginRequest' },
+              example: exampleResponses.authLoginRequest
             }
           }
         },
@@ -141,7 +315,8 @@ export default {
             description: 'Access and refresh tokens issued',
             content: {
               'application/json': {
-                schema: { $ref: '#/components/schemas/AuthSuccessResponse' }
+                schema: { $ref: '#/components/schemas/AuthSuccessResponse' },
+                example: exampleResponses.authSuccess
               }
             }
           },
@@ -149,7 +324,8 @@ export default {
             description: 'Invalid credentials',
             content: {
               'application/json': {
-                schema: { $ref: '#/components/schemas/ErrorResponse' }
+                schema: { $ref: '#/components/schemas/ErrorResponse' },
+                example: exampleErrors.invalidCredentials
               }
             }
           }
@@ -165,7 +341,8 @@ export default {
           required: true,
           content: {
             'application/json': {
-              schema: { $ref: '#/components/schemas/AuthRefreshRequest' }
+              schema: { $ref: '#/components/schemas/AuthRefreshRequest' },
+              example: exampleResponses.authRefreshRequest
             }
           }
         },
@@ -174,7 +351,8 @@ export default {
             description: 'New access and refresh tokens issued',
             content: {
               'application/json': {
-                schema: { $ref: '#/components/schemas/AuthSuccessResponse' }
+                schema: { $ref: '#/components/schemas/AuthSuccessResponse' },
+                example: exampleResponses.authSuccess
               }
             }
           },
@@ -182,7 +360,8 @@ export default {
             description: 'Invalid or expired refresh token',
             content: {
               'application/json': {
-                schema: { $ref: '#/components/schemas/ErrorResponse' }
+                schema: { $ref: '#/components/schemas/ErrorResponse' },
+                example: exampleErrors.invalidRefreshToken
               }
             }
           }
@@ -214,7 +393,8 @@ export default {
             description: 'Paginated profile list',
             content: {
               'application/json': {
-                schema: { $ref: '#/components/schemas/ListResponse' }
+                schema: { $ref: '#/components/schemas/ListResponse' },
+                example: exampleResponses.list
               }
             }
           },
@@ -222,7 +402,17 @@ export default {
             description: 'Invalid query parameters',
             content: {
               'application/json': {
-                schema: { $ref: '#/components/schemas/ErrorResponse' }
+                schema: { $ref: '#/components/schemas/ErrorResponse' },
+                example: exampleErrors.invalidQuery
+              }
+            }
+          },
+          422: {
+            description: 'Invalid numeric query parameter format',
+            content: {
+              'application/json': {
+                schema: { $ref: '#/components/schemas/ErrorResponse' },
+                example: exampleErrors.invalidQuery
               }
             }
           }
@@ -234,7 +424,8 @@ export default {
           required: true,
           content: {
             'application/json': {
-              schema: { $ref: '#/components/schemas/CreateProfileRequest' }
+              schema: { $ref: '#/components/schemas/CreateProfileRequest' },
+              example: { name: 'ella' }
             }
           }
         },
@@ -243,7 +434,8 @@ export default {
             description: 'Existing profile returned',
             content: {
               'application/json': {
-                schema: { $ref: '#/components/schemas/SuccessResponse' }
+                schema: { $ref: '#/components/schemas/SuccessResponse' },
+                example: exampleResponses.createExisting
               }
             }
           },
@@ -251,7 +443,8 @@ export default {
             description: 'New profile created',
             content: {
               'application/json': {
-                schema: { $ref: '#/components/schemas/SuccessResponse' }
+                schema: { $ref: '#/components/schemas/SuccessResponse' },
+                example: exampleResponses.createNew
               }
             }
           },
@@ -259,7 +452,17 @@ export default {
             description: 'Missing name or invalid JSON body',
             content: {
               'application/json': {
-                schema: { $ref: '#/components/schemas/ErrorResponse' }
+                schema: { $ref: '#/components/schemas/ErrorResponse' },
+                examples: {
+                  missingName: {
+                    summary: 'Required name missing',
+                    value: exampleErrors.nameRequired
+                  },
+                  invalidJson: {
+                    summary: 'Malformed JSON request body',
+                    value: exampleErrors.invalidJsonBody
+                  }
+                }
               }
             }
           },
@@ -267,15 +470,17 @@ export default {
             description: 'Invalid name type',
             content: {
               'application/json': {
-                schema: { $ref: '#/components/schemas/ErrorResponse' }
+                schema: { $ref: '#/components/schemas/ErrorResponse' },
+                example: exampleErrors.invalidNameType
               }
             }
           },
           502: {
-            description: 'Upstream enrichment failed',
+            description: 'Upstream enrichment service failed',
             content: {
               'application/json': {
-                schema: { $ref: '#/components/schemas/ErrorResponse' }
+                schema: { $ref: '#/components/schemas/ErrorResponse' },
+                example: exampleErrors.upstreamEnrichmentFailed
               }
             }
           }
@@ -319,8 +524,7 @@ export default {
               'text/csv': {
                 schema: {
                   type: 'string',
-                  example:
-                    'id,name,gender,gender_probability,age,age_group,country_id,country_name,country_probability,created_at'
+                  example: exportCsvExample
                 }
               }
             }
@@ -329,7 +533,17 @@ export default {
             description: 'Invalid query parameters',
             content: {
               'application/json': {
-                schema: { $ref: '#/components/schemas/ErrorResponse' }
+                schema: { $ref: '#/components/schemas/ErrorResponse' },
+                example: exampleErrors.invalidQuery
+              }
+            }
+          },
+          422: {
+            description: 'Invalid numeric query parameter format',
+            content: {
+              'application/json': {
+                schema: { $ref: '#/components/schemas/ErrorResponse' },
+                example: exampleErrors.invalidQuery
               }
             }
           }
@@ -351,7 +565,8 @@ export default {
             description: 'Search results',
             content: {
               'application/json': {
-                schema: { $ref: '#/components/schemas/ListResponse' }
+                schema: { $ref: '#/components/schemas/ListResponse' },
+                example: exampleResponses.search
               }
             }
           },
@@ -359,7 +574,17 @@ export default {
             description: 'Query could not be interpreted',
             content: {
               'application/json': {
-                schema: { $ref: '#/components/schemas/ErrorResponse' }
+                schema: { $ref: '#/components/schemas/ErrorResponse' },
+                example: exampleErrors.unableToInterpretQuery
+              }
+            }
+          },
+          422: {
+            description: 'Invalid numeric query parameter format',
+            content: {
+              'application/json': {
+                schema: { $ref: '#/components/schemas/ErrorResponse' },
+                example: exampleErrors.invalidQuery
               }
             }
           }
@@ -375,7 +600,8 @@ export default {
             description: 'Profile found',
             content: {
               'application/json': {
-                schema: { $ref: '#/components/schemas/SuccessResponse' }
+                schema: { $ref: '#/components/schemas/SuccessResponse' },
+                example: exampleResponses.getById
               }
             }
           },
@@ -383,7 +609,8 @@ export default {
             description: 'Profile not found',
             content: {
               'application/json': {
-                schema: { $ref: '#/components/schemas/ErrorResponse' }
+                schema: { $ref: '#/components/schemas/ErrorResponse' },
+                example: exampleErrors.profileNotFound
               }
             }
           }
@@ -400,7 +627,8 @@ export default {
             description: 'Profile not found',
             content: {
               'application/json': {
-                schema: { $ref: '#/components/schemas/ErrorResponse' }
+                schema: { $ref: '#/components/schemas/ErrorResponse' },
+                example: exampleErrors.profileNotFound
               }
             }
           }
