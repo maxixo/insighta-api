@@ -155,6 +155,69 @@ Example response:
 }
 ```
 
+### Planned auth contract
+
+The following auth routes are part of the published API contract, but they are not implemented by the current backend yet.
+
+### `POST /api/v1/auth/login`
+
+Planned login route for issuing bearer tokens to web and CLI clients.
+
+Success response:
+
+```json
+{
+  "status": "success",
+  "data": {
+    "access_token": "token",
+    "refresh_token": "token",
+    "token_type": "Bearer",
+    "expires_in": 900
+  }
+}
+```
+
+Failure response:
+
+```json
+{
+  "status": "error",
+  "message": "Invalid credentials"
+}
+```
+
+### `POST /api/v1/auth/refresh`
+
+Planned refresh route for rotating both tokens through a JSON request body.
+
+Request:
+
+```json
+{
+  "refresh_token": "token"
+}
+```
+
+Success response:
+
+```json
+{
+  "status": "success",
+  "data": {
+    "access_token": "token",
+    "refresh_token": "token",
+    "token_type": "Bearer",
+    "expires_in": 900
+  }
+}
+```
+
+Behavior:
+
+- Accepts refresh tokens in a JSON request body
+- Rotates both `access_token` and `refresh_token` after a successful refresh
+- Returns `401 Unauthorized` for invalid or expired refresh tokens
+
 ### `POST /api/v1/profiles`
 
 Create or idempotently reuse a profile.
@@ -221,6 +284,30 @@ Example:
 ```bash
 curl "http://localhost:4000/api/v1/profiles?gender=female&sort_by=age&order=desc&page=1&limit=10"
 ```
+
+### `GET /api/v1/profiles/export.csv`
+
+Planned CSV export route for CLI and backend consumers. This route is part of the published contract, but it is not implemented by the current backend yet.
+
+Behavior:
+
+- Uses the same filter and sort query parameters as `GET /api/v1/profiles`
+- Does not paginate export responses
+- Returns `Content-Type: text/csv; charset=utf-8`
+- Returns `Content-Disposition: attachment; filename="profiles-export.csv"`
+
+CSV column order:
+
+- `id`
+- `name`
+- `gender`
+- `gender_probability`
+- `age`
+- `age_group`
+- `country_id`
+- `country_name`
+- `country_probability`
+- `created_at`
 
 ### `GET /api/v1/profiles/search?q=...`
 
@@ -327,8 +414,10 @@ http://<api-host>/api/v1
 
 Recommended frontend usage:
 
+- Future auth flow: `POST /api/v1/auth/login` and `POST /api/v1/auth/refresh`
 - Portal create flow: `POST /api/v1/profiles`
 - Portal list pages: `GET /api/v1/profiles`
+- Future CLI export flow: `GET /api/v1/profiles/export.csv`
 - Portal search box: `GET /api/v1/profiles/search?q=...`
 - CLI integration: same endpoints using JSON over HTTP
 

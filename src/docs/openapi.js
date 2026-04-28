@@ -49,6 +49,38 @@ export default {
           name: { type: 'string', example: 'ella' }
         }
       },
+      AuthLoginRequest: {
+        type: 'object',
+        minProperties: 1,
+        additionalProperties: true,
+        description:
+          'Planned credential payload. Exact login fields will be finalized when runtime auth support is implemented.'
+      },
+      AuthRefreshRequest: {
+        type: 'object',
+        required: ['refresh_token'],
+        properties: {
+          refresh_token: { type: 'string', example: 'refresh-token' }
+        }
+      },
+      AuthTokenData: {
+        type: 'object',
+        required: ['access_token', 'refresh_token', 'token_type', 'expires_in'],
+        properties: {
+          access_token: { type: 'string', example: 'token' },
+          refresh_token: { type: 'string', example: 'token' },
+          token_type: { type: 'string', example: 'Bearer' },
+          expires_in: { type: 'integer', example: 900 }
+        }
+      },
+      AuthSuccessResponse: {
+        type: 'object',
+        required: ['status', 'data'],
+        properties: {
+          status: { type: 'string', example: 'success' },
+          data: { $ref: '#/components/schemas/AuthTokenData' }
+        }
+      },
       SuccessResponse: {
         type: 'object',
         properties: {
@@ -87,6 +119,72 @@ export default {
         responses: {
           200: {
             description: 'Service health information'
+          }
+        }
+      }
+    },
+    '/api/v1/auth/login': {
+      post: {
+        summary: 'Planned auth login contract',
+        description:
+          'This route is documented for client contract planning only. The current backend does not yet implement runtime auth support.',
+        requestBody: {
+          required: true,
+          content: {
+            'application/json': {
+              schema: { $ref: '#/components/schemas/AuthLoginRequest' }
+            }
+          }
+        },
+        responses: {
+          200: {
+            description: 'Access and refresh tokens issued',
+            content: {
+              'application/json': {
+                schema: { $ref: '#/components/schemas/AuthSuccessResponse' }
+              }
+            }
+          },
+          401: {
+            description: 'Invalid credentials',
+            content: {
+              'application/json': {
+                schema: { $ref: '#/components/schemas/ErrorResponse' }
+              }
+            }
+          }
+        }
+      }
+    },
+    '/api/v1/auth/refresh': {
+      post: {
+        summary: 'Planned token refresh contract',
+        description:
+          'This route is documented for client contract planning only. Successful refresh rotates both the access token and the refresh token.',
+        requestBody: {
+          required: true,
+          content: {
+            'application/json': {
+              schema: { $ref: '#/components/schemas/AuthRefreshRequest' }
+            }
+          }
+        },
+        responses: {
+          200: {
+            description: 'New access and refresh tokens issued',
+            content: {
+              'application/json': {
+                schema: { $ref: '#/components/schemas/AuthSuccessResponse' }
+              }
+            }
+          },
+          401: {
+            description: 'Invalid or expired refresh token',
+            content: {
+              'application/json': {
+                schema: { $ref: '#/components/schemas/ErrorResponse' }
+              }
+            }
           }
         }
       }
@@ -175,6 +273,60 @@ export default {
           },
           502: {
             description: 'Upstream enrichment failed',
+            content: {
+              'application/json': {
+                schema: { $ref: '#/components/schemas/ErrorResponse' }
+              }
+            }
+          }
+        }
+      }
+    },
+    '/api/v1/profiles/export.csv': {
+      get: {
+        summary: 'Planned CSV export contract',
+        description:
+          'This route is documented for client contract planning only. Export responses use the same filter and sort parameters as the profile list endpoint, but they do not paginate.',
+        parameters: [
+          { in: 'query', name: 'gender', schema: { type: 'string', enum: ['male', 'female'] } },
+          {
+            in: 'query',
+            name: 'age_group',
+            schema: { type: 'string', enum: ['child', 'teenager', 'adult', 'senior'] }
+          },
+          { in: 'query', name: 'country_id', schema: { type: 'string', example: 'NG' } },
+          { in: 'query', name: 'min_age', schema: { type: 'integer' } },
+          { in: 'query', name: 'max_age', schema: { type: 'integer' } },
+          { in: 'query', name: 'min_gender_probability', schema: { type: 'number' } },
+          { in: 'query', name: 'min_country_probability', schema: { type: 'number' } },
+          { in: 'query', name: 'sort_by', schema: { type: 'string', enum: ['age', 'created_at', 'gender_probability'] } },
+          { in: 'query', name: 'order', schema: { type: 'string', enum: ['asc', 'desc'] } }
+        ],
+        responses: {
+          200: {
+            description: 'CSV export of matching profiles',
+            headers: {
+              'Content-Type': {
+                description: 'CSV media type with UTF-8 charset',
+                schema: { type: 'string', example: 'text/csv; charset=utf-8' }
+              },
+              'Content-Disposition': {
+                description: 'Attachment filename for the exported file',
+                schema: { type: 'string', example: 'attachment; filename=\"profiles-export.csv\"' }
+              }
+            },
+            content: {
+              'text/csv': {
+                schema: {
+                  type: 'string',
+                  example:
+                    'id,name,gender,gender_probability,age,age_group,country_id,country_name,country_probability,created_at'
+                }
+              }
+            }
+          },
+          400: {
+            description: 'Invalid query parameters',
             content: {
               'application/json': {
                 schema: { $ref: '#/components/schemas/ErrorResponse' }
