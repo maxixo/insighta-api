@@ -62,6 +62,10 @@ function encodeToken(payload, secret, expiresInSeconds) {
 }
 
 export function verifyToken(token, secret) {
+  if (!secret) {
+    throw new AppError(500, 'Token signing is not configured');
+  }
+
   const [encodedHeader, encodedPayload, signature] = token.split('.');
 
   if (!encodedHeader || !encodedPayload || !signature) {

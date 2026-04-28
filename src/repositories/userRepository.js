@@ -36,6 +36,14 @@ class UserRepository {
     }
   }
 
+  async findById(id) {
+    try {
+      return await this.getCollection().findOne({ id });
+    } catch (error) {
+      rethrowDatabaseError(error);
+    }
+  }
+
   async insertUser(user) {
     try {
       await this.getCollection().insertOne(user);
