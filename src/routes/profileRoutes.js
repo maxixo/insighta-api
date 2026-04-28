@@ -8,11 +8,14 @@ import {
   listProfiles,
   searchProfiles
 } from '../controllers/profileController.js';
+import { requireApiVersion } from '../middleware/requireApiVersion.js';
 import { requireRole } from '../middleware/requireRole.js';
 
 const router = Router();
 const allowReadAccess = requireRole([USER_ROLES.admin, USER_ROLES.analyst]);
 const requireAdmin = requireRole([USER_ROLES.admin]);
+
+router.use(requireApiVersion);
 
 router.get('/search', allowReadAccess, searchProfiles);
 router.get('/', allowReadAccess, listProfiles);
