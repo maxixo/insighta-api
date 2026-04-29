@@ -3,7 +3,7 @@ import { vi } from 'vitest';
 
 import { USER_ROLES } from '../src/constants/auth.js';
 import app from '../src/app.js';
-import { createAuthorizationHeader, createAuthorizedUser } from './helpers/auth.js';
+import { createApiVersionHeaders, createAuthorizationHeader, createAuthorizedUser } from './helpers/auth.js';
 import { mockEnrichmentFetch } from './helpers/mockFetch.js';
 
 describe('GET/DELETE /api/v1/profiles/:id', () => {
@@ -18,12 +18,12 @@ describe('GET/DELETE /api/v1/profiles/:id', () => {
 
     const createResponse = await request(app)
       .post('/api/v1/profiles')
-      .set('Authorization', createAuthorizationHeader(admin.accessToken))
+      .set(createApiVersionHeaders(admin.accessToken))
       .send({ name: 'ella' });
 
     const response = await request(app)
       .get(`/api/v1/profiles/${createResponse.body.data.id}`)
-      .set('Authorization', createAuthorizationHeader(analyst.accessToken));
+      .set(createApiVersionHeaders(analyst.accessToken));
 
     expect(response.status).toBe(200);
     expect(response.body.status).toBe('success');
@@ -34,7 +34,7 @@ describe('GET/DELETE /api/v1/profiles/:id', () => {
     const { accessToken } = await createAuthorizedUser({ role: USER_ROLES.analyst });
     const response = await request(app)
       .get('/api/v1/profiles/non-existent-id')
-      .set('Authorization', createAuthorizationHeader(accessToken));
+      .set(createApiVersionHeaders(accessToken));
 
     expect(response.status).toBe(404);
     expect(response.body).toEqual({ status: 'error', message: 'Profile not found' });
@@ -46,15 +46,15 @@ describe('GET/DELETE /api/v1/profiles/:id', () => {
 
     const createResponse = await request(app)
       .post('/api/v1/profiles')
-      .set('Authorization', createAuthorizationHeader(admin.accessToken))
+      .set(createApiVersionHeaders(admin.accessToken))
       .send({ name: 'ella' });
 
     const deleteResponse = await request(app)
       .delete(`/api/v1/profiles/${createResponse.body.data.id}`)
-      .set('Authorization', createAuthorizationHeader(admin.accessToken));
+      .set(createApiVersionHeaders(admin.accessToken));
     const getResponse = await request(app)
       .get(`/api/v1/profiles/${createResponse.body.data.id}`)
-      .set('Authorization', createAuthorizationHeader(admin.accessToken));
+      .set(createApiVersionHeaders(admin.accessToken));
 
     expect(deleteResponse.status).toBe(204);
     expect(getResponse.status).toBe(404);
@@ -71,17 +71,37 @@ describe('GET/DELETE /api/v1/profiles/:id', () => {
 
     const createResponse = await request(app)
       .post('/api/v1/profiles')
-      .set('Authorization', createAuthorizationHeader(admin.accessToken))
+      .set(createApiVersionHeaders(admin.accessToken))
       .send({ name: 'ella' });
 
     const response = await request(app)
       .delete(`/api/v1/profiles/${createResponse.body.data.id}`)
-      .set('Authorization', createAuthorizationHeader(analyst.accessToken));
+      .set(createApiVersionHeaders(analyst.accessToken));
 
     expect(response.status).toBe(403);
     expect(response.body).toEqual({
       status: 'error',
       message: 'Forbidden'
+    });
+  });
+
+  it('requires the api version header on profile deletes', async () => {
+    vi.stubGlobal('fetch', mockEnrichmentFetch());
+    const admin = await createAuthorizedUser({ role: USER_ROLES.admin });
+
+    const createResponse = await request(app)
+      .post('/api/v1/profiles')
+      .set(createApiVersionHeaders(admin.accessToken))
+      .send({ name: 'ella' });
+
+    const response = await request(app)
+      .delete(`/api/v1/profiles/${createResponse.body.data.id}`)
+      .set('Authorization', createAuthorizationHeader(admin.accessToken));
+
+    expect(response.status).toBe(400);
+    expect(response.body).toEqual({
+      status: 'error',
+      message: 'API version header required'
     });
   });
 });

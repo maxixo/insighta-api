@@ -3,7 +3,7 @@ import { vi } from 'vitest';
 
 import { USER_ROLES } from '../src/constants/auth.js';
 import app from '../src/app.js';
-import { createAuthorizationHeader, createAuthorizedUser } from './helpers/auth.js';
+import { createApiVersionHeaders, createAuthorizationHeader, createAuthorizedUser } from './helpers/auth.js';
 import { mockEnrichmentFetch } from './helpers/mockFetch.js';
 
 describe('POST /api/v1/profiles', () => {
@@ -13,7 +13,7 @@ describe('POST /api/v1/profiles', () => {
 
     const response = await request(app)
       .post('/api/v1/profiles')
-      .set('Authorization', createAuthorizationHeader(accessToken))
+      .set(createApiVersionHeaders(accessToken))
       .send({ name: '  Ella  ' });
 
     expect(response.status).toBe(201);
@@ -35,12 +35,12 @@ describe('POST /api/v1/profiles', () => {
 
     const firstResponse = await request(app)
       .post('/api/v1/profiles')
-      .set('Authorization', createAuthorizationHeader(accessToken))
+      .set(createApiVersionHeaders(accessToken))
       .send({ name: 'ella' });
 
     const secondResponse = await request(app)
       .post('/api/v1/profiles')
-      .set('Authorization', createAuthorizationHeader(accessToken))
+      .set(createApiVersionHeaders(accessToken))
       .send({ name: ' Ella ' });
 
     expect(firstResponse.status).toBe(201);
@@ -53,11 +53,11 @@ describe('POST /api/v1/profiles', () => {
     const { accessToken } = await createAuthorizedUser({ role: USER_ROLES.admin });
     const missingName = await request(app)
       .post('/api/v1/profiles')
-      .set('Authorization', createAuthorizationHeader(accessToken))
+      .set(createApiVersionHeaders(accessToken))
       .send({});
     const invalidType = await request(app)
       .post('/api/v1/profiles')
-      .set('Authorization', createAuthorizationHeader(accessToken))
+      .set(createApiVersionHeaders(accessToken))
       .send({ name: 42 });
 
     expect(missingName.status).toBe(400);
@@ -70,7 +70,7 @@ describe('POST /api/v1/profiles', () => {
     const { accessToken } = await createAuthorizedUser({ role: USER_ROLES.admin });
     const response = await request(app)
       .post('/api/v1/profiles')
-      .set('Authorization', createAuthorizationHeader(accessToken))
+      .set(createApiVersionHeaders(accessToken))
       .set('Content-Type', 'application/json')
       .send('{"name":');
 
@@ -93,7 +93,7 @@ describe('POST /api/v1/profiles', () => {
 
     const response = await request(app)
       .post('/api/v1/profiles')
-      .set('Authorization', createAuthorizationHeader(accessToken))
+      .set(createApiVersionHeaders(accessToken))
       .send({ name: 'ella' });
 
     expect(response.status).toBe(502);
@@ -108,13 +108,28 @@ describe('POST /api/v1/profiles', () => {
 
     const response = await request(app)
       .post('/api/v1/profiles')
-      .set('Authorization', createAuthorizationHeader(accessToken))
+      .set(createApiVersionHeaders(accessToken))
       .send({ name: 'ella' });
 
     expect(response.status).toBe(403);
     expect(response.body).toEqual({
       status: 'error',
       message: 'Forbidden'
+    });
+  });
+
+  it('requires the api version header on profile writes', async () => {
+    const { accessToken } = await createAuthorizedUser({ role: USER_ROLES.admin });
+
+    const response = await request(app)
+      .post('/api/v1/profiles')
+      .set('Authorization', createAuthorizationHeader(accessToken))
+      .send({ name: 'ella' });
+
+    expect(response.status).toBe(400);
+    expect(response.body).toEqual({
+      status: 'error',
+      message: 'API version header required'
     });
   });
 });

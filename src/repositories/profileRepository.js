@@ -74,6 +74,14 @@ class ProfileRepository {
     }
   }
 
+  async findAll(filter, sort) {
+    try {
+      return await this.getCollection().find(filter).sort(sort).toArray();
+    } catch (error) {
+      rethrowDatabaseError(error);
+    }
+  }
+
   async deleteById(id) {
     try {
       return await this.getCollection().deleteOne({ id });

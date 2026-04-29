@@ -4,17 +4,22 @@ import { USER_ROLES } from '../constants/auth.js';
 import {
   createProfile,
   deleteProfileById,
+  exportProfilesCsv,
   getProfileById,
   listProfiles,
   searchProfiles
 } from '../controllers/profileController.js';
+import { requireApiVersion } from '../middleware/requireApiVersion.js';
 import { requireRole } from '../middleware/requireRole.js';
 
 const router = Router();
 const allowReadAccess = requireRole([USER_ROLES.admin, USER_ROLES.analyst]);
 const requireAdmin = requireRole([USER_ROLES.admin]);
 
+router.use(requireApiVersion);
+
 router.get('/search', allowReadAccess, searchProfiles);
+router.get('/export', allowReadAccess, exportProfilesCsv);
 router.get('/', allowReadAccess, listProfiles);
 router.post('/', requireAdmin, createProfile);
 router.get('/:id', allowReadAccess, getProfileById);

@@ -3,7 +3,7 @@ import request from 'supertest';
 import app from '../src/app.js';
 import { mongoManager } from '../src/db/mongo.js';
 import { USER_ROLES } from '../src/constants/auth.js';
-import { createAuthorizationHeader, createAuthorizedUser } from './helpers/auth.js';
+import { createApiVersionHeaders, createAuthorizationHeader, createAuthorizedUser } from './helpers/auth.js';
 
 const seededProfiles = [
   {
@@ -54,12 +54,18 @@ describe('GET /api/v1/profiles and /api/v1/profiles/search', () => {
     const response = await request(app).get(
       '/api/v1/profiles?gender=female&sort_by=age&order=desc&page=1&limit=2'
     )
-      .set('Authorization', createAuthorizationHeader(accessToken));
+      .set(createApiVersionHeaders(accessToken));
 
     expect(response.status).toBe(200);
     expect(response.body.page).toBe(1);
     expect(response.body.limit).toBe(2);
     expect(response.body.total).toBe(2);
+    expect(response.body.total_pages).toBe(1);
+    expect(response.body.links).toEqual({
+      self: '/api/v1/profiles?gender=female&sort_by=age&order=desc&page=1&limit=2',
+      next: null,
+      prev: null
+    });
     expect(response.body.data.map((profile) => profile.name)).toEqual(['martha', 'ella']);
   });
 
@@ -67,16 +73,22 @@ describe('GET /api/v1/profiles and /api/v1/profiles/search', () => {
     const { accessToken } = await createAuthorizedUser({ role: USER_ROLES.analyst });
     const clamped = await request(app)
       .get('/api/v1/profiles?limit=100')
-      .set('Authorization', createAuthorizationHeader(accessToken));
+      .set(createApiVersionHeaders(accessToken));
     const invalidRange = await request(app)
       .get('/api/v1/profiles?min_age=40&max_age=20')
-      .set('Authorization', createAuthorizationHeader(accessToken));
+      .set(createApiVersionHeaders(accessToken));
     const invalidType = await request(app)
       .get('/api/v1/profiles?min_age=abc')
-      .set('Authorization', createAuthorizationHeader(accessToken));
+      .set(createApiVersionHeaders(accessToken));
 
     expect(clamped.status).toBe(200);
     expect(clamped.body.limit).toBe(50);
+    expect(clamped.body.total_pages).toBe(1);
+    expect(clamped.body.links).toEqual({
+      self: '/api/v1/profiles?limit=50&page=1',
+      next: null,
+      prev: null
+    });
     expect(invalidRange.status).toBe(400);
     expect(invalidRange.body).toEqual({ status: 'error', message: 'Invalid query parameters' });
     expect(invalidType.status).toBe(422);
@@ -87,28 +99,60 @@ describe('GET /api/v1/profiles and /api/v1/profiles/search', () => {
     const { accessToken } = await createAuthorizedUser({ role: USER_ROLES.analyst });
     const response = await request(app)
       .get('/api/v1/profiles/search?q=young%20females%20from%20nigeria&sort_by=created_at&order=asc')
-      .set('Authorization', createAuthorizationHeader(accessToken));
+      .set(createApiVersionHeaders(accessToken));
 
     expect(response.status).toBe(200);
     expect(response.body.total).toBe(0);
+    expect(response.body.total_pages).toBe(0);
+    expect(response.body.links).toEqual({
+      self: '/api/v1/profiles/search?q=young+females+from+nigeria&sort_by=created_at&order=asc&page=1&limit=10',
+      next: null,
+      prev: null
+    });
   });
 
   it('supports comparator and country search rules', async () => {
     const { accessToken } = await createAuthorizedUser({ role: USER_ROLES.analyst });
     const response = await request(app)
       .get('/api/v1/profiles/search?q=older%20than%2030%20from%20united%20kingdom')
-      .set('Authorization', createAuthorizationHeader(accessToken));
+      .set(createApiVersionHeaders(accessToken));
 
     expect(response.status).toBe(200);
     expect(response.body.total).toBe(1);
+    expect(response.body.total_pages).toBe(1);
+    expect(response.body.links).toEqual({
+      self: '/api/v1/profiles/search?q=older+than+30+from+united+kingdom&page=1&limit=10',
+      next: null,
+      prev: null
+    });
     expect(response.body.data[0].name).toBe('martha');
+  });
+
+  it('returns navigation links for multi-page list responses', async () => {
+    const { accessToken } = await createAuthorizedUser({ role: USER_ROLES.analyst });
+    const response = await request(app)
+      .get('/api/v1/profiles?page=2&limit=1&sort_by=created_at&order=asc')
+      .set(createApiVersionHeaders(accessToken));
+
+    expect(response.status).toBe(200);
+    expect(response.body.page).toBe(2);
+    expect(response.body.limit).toBe(1);
+    expect(response.body.total).toBe(3);
+    expect(response.body.total_pages).toBe(3);
+    expect(response.body.links).toEqual({
+      self: '/api/v1/profiles?page=2&limit=1&sort_by=created_at&order=asc',
+      next: '/api/v1/profiles?page=3&limit=1&sort_by=created_at&order=asc',
+      prev: '/api/v1/profiles?page=1&limit=1&sort_by=created_at&order=asc'
+    });
+    expect(response.body.data).toHaveLength(1);
+    expect(response.body.data[0].name).toBe('john');
   });
 
   it('returns an interpretation error when no search rule matches', async () => {
     const { accessToken } = await createAuthorizedUser({ role: USER_ROLES.analyst });
     const response = await request(app)
       .get('/api/v1/profiles/search?q=hello%20world')
-      .set('Authorization', createAuthorizationHeader(accessToken));
+      .set(createApiVersionHeaders(accessToken));
 
     expect(response.status).toBe(400);
     expect(response.body).toEqual({ status: 'error', message: 'Unable to interpret query' });
@@ -118,7 +162,7 @@ describe('GET /api/v1/profiles and /api/v1/profiles/search', () => {
     const { accessToken } = await createAuthorizedUser({ role: USER_ROLES.analyst });
     const response = await request(app)
       .get('/api/v1/profiles/search?q=')
-      .set('Authorization', createAuthorizationHeader(accessToken));
+      .set(createApiVersionHeaders(accessToken));
 
     expect(response.status).toBe(400);
     expect(response.body).toEqual({ status: 'error', message: 'Unable to interpret query' });
@@ -141,12 +185,25 @@ describe('GET /api/v1/profiles and /api/v1/profiles/search', () => {
     });
     const response = await request(app)
       .get('/api/v1/profiles')
-      .set('Authorization', createAuthorizationHeader(accessToken));
+      .set(createApiVersionHeaders(accessToken));
 
     expect(response.status).toBe(403);
     expect(response.body).toEqual({
       status: 'error',
       message: 'User account is inactive'
+    });
+  });
+
+  it('requires the api version header on profile reads', async () => {
+    const { accessToken } = await createAuthorizedUser({ role: USER_ROLES.analyst });
+    const response = await request(app)
+      .get('/api/v1/profiles')
+      .set('Authorization', createAuthorizationHeader(accessToken));
+
+    expect(response.status).toBe(400);
+    expect(response.body).toEqual({
+      status: 'error',
+      message: 'API version header required'
     });
   });
 });

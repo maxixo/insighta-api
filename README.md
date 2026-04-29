@@ -91,8 +91,36 @@ Copy `.env.example` to `.env` and update as needed.
 | `NODE_ENV` | No | `development` | Runtime environment |
 | `MONGO_URI` | No | `mongodb://127.0.0.1:27017` | MongoDB connection URI |
 | `DB_NAME` | No | `profile_db` | MongoDB database name |
-| `CORS_ORIGIN` | No | local portal origins | Comma-separated allowed origins |
+| `CORS_ORIGIN` | No | `*` | Allowed origins. `*` enables all origins |
 | `SEED_PROFILES_SOURCE` | No | provided Google Drive download URL | Seed dataset source |
+| `APP_BASE_URL` | No | `http://localhost:4000` | Base URL used to derive default OAuth callback URLs |
+| `GITHUB_CLIENT_ID` | Yes for GitHub OAuth | none | GitHub OAuth app client ID |
+| `GITHUB_CLIENT_SECRET` | Yes for GitHub OAuth callback | none | GitHub OAuth app client secret |
+| `GITHUB_SCOPE` | No | `read:user user:email` | Scope sent to GitHub during OAuth authorization |
+| `GITHUB_AUTHORIZE_URL` | No | GitHub authorize URL | Override for the GitHub OAuth authorize endpoint |
+| `GITHUB_TOKEN_URL` | No | GitHub token URL | Override for the GitHub OAuth token exchange endpoint |
+| `GITHUB_REDIRECT_URI` | No | `APP_BASE_URL + /auth/github/callback` | Callback URI registered with the GitHub OAuth app |
+| `GITHUB_USER_URL` | No | GitHub user API URL | Override for the GitHub user lookup endpoint |
+| `GITHUB_USER_EMAILS_URL` | No | GitHub user emails API URL | Override for the GitHub user email lookup endpoint |
+| `AUTH_COOKIE_SECURE` | No | `true` in production, otherwise `false` | Marks OAuth PKCE cookies as secure-only |
+| `AUTH_PKCE_COOKIE_MAX_AGE_MS` | No | `600000` | Max age for PKCE verifier and state cookies |
+| `ACCESS_TOKEN_SECRET` | Yes for app auth | none | HMAC secret used to sign access tokens |
+| `REFRESH_TOKEN_SECRET` | Yes for app auth | none | HMAC secret used to sign refresh tokens |
+| `ACCESS_TOKEN_TTL_SECONDS` | No | `180` | Access token lifetime in seconds |
+| `REFRESH_TOKEN_TTL_SECONDS` | No | `300` | Refresh token lifetime in seconds |
+| `ENABLE_DOCS` | No | `true` outside production, `false` in production | Expose Swagger UI at `/docs` |
+| `TRUST_PROXY` | No | `true` in production, otherwise `false` | Trust reverse-proxy headers for IPs and rate limiting |
+| `RATE_LIMIT_ENABLED` | No | `true` outside test | Enable in-memory request rate limiting |
+| `RATE_LIMIT_WINDOW_MS` | No | `60000` | Rate-limit window length |
+| `AUTH_RATE_LIMIT_MAX_REQUESTS` | No | `10` | Max requests per IP per window for `/auth/*` |
+| `RATE_LIMIT_MAX_REQUESTS` | No | `60` | Max requests per IP per window for all non-auth endpoints |
+| `REQUEST_TIMEOUT_MS` | No | `15000` | Per-request timeout on the Node HTTP server |
+| `HEADERS_TIMEOUT_MS` | No | `16000` | Header-read timeout on the Node HTTP server |
+| `KEEP_ALIVE_TIMEOUT_MS` | No | `5000` | Keep-alive timeout on the Node HTTP server |
+| `SHUTDOWN_TIMEOUT_MS` | No | `10000` | Forced shutdown timeout after `SIGINT` or `SIGTERM` |
+| `MONGO_SERVER_SELECTION_TIMEOUT_MS` | No | `5000` | MongoDB server selection timeout |
+| `MONGO_MAX_POOL_SIZE` | No | `20` | MongoDB max connection pool size |
+| `MONGO_MIN_POOL_SIZE` | No | `0` | MongoDB min connection pool size |
 
 ## Setup
 
@@ -155,49 +183,67 @@ Example response:
 }
 ```
 
-### Planned auth contract
+### `GET /health/ready`
 
-The following auth routes are part of the published API contract, but they are not implemented by the current backend yet.
+Returns readiness for deployment probes. This endpoint returns `200` only when the database dependency is ready, and returns `503` when the API should be considered not ready for traffic.
 
-### `POST /api/v1/auth/login`
+### Auth routes
 
-Planned login route for issuing bearer tokens to web and CLI clients.
+### `GET /auth/github`
 
-Illustrative request example:
+Starts the GitHub OAuth flow with PKCE.
 
-```json
-{
-  "identifier": "operator@example.com",
-  "password": "secret"
-}
-```
+Behavior:
+
+- Returns `302 Found` to the GitHub authorize URL
+- Sets HTTP-only `github_oauth_state` and `github_oauth_code_verifier` cookies scoped to `/auth/github`
+- Returns `Cache-Control: no-store`
+- Returns `500` with `GitHub OAuth is not configured` when `GITHUB_CLIENT_ID` is missing
+
+### `GET /auth/github/callback`
+
+Handles the GitHub OAuth callback and issues application tokens.
 
 Success response:
 
 ```json
 {
   "status": "success",
-  "data": {
-    "access_token": "token",
-    "refresh_token": "token",
-    "token_type": "Bearer",
-    "expires_in": 900
-  }
+  "access_token": "token",
+  "refresh_token": "token"
 }
 ```
 
-Failure response:
+Behavior:
+
+- Validates the GitHub `code` and `state` query parameters
+- Validates the PKCE state and verifier cookies
+- Exchanges the GitHub code for a GitHub access token
+- Creates a new user with role `analyst` when the GitHub account is seen for the first time
+- Reuses existing users, preserving their `role` and `is_active` values
+- Updates `last_login_at` on successful login
+- Clears the temporary PKCE cookies
+- Returns `Cache-Control: no-store`
+
+Common failure responses:
 
 ```json
 {
   "status": "error",
-  "message": "Invalid credentials"
+  "message": "Invalid GitHub OAuth state"
 }
 ```
 
-### `POST /api/v1/auth/refresh`
+```json
+{
+  "status": "error",
+  "message": "GitHub OAuth exchange failed"
+}
+```
 
-Planned refresh route for rotating both tokens through a JSON request body.
+### `POST /auth/refresh`
+
+Rotates both the access token and the refresh token through a JSON request body.
 
 Request:
 
@@ -212,12 +258,8 @@ Success response:
 ```json
 {
   "status": "success",
-  "data": {
-    "access_token": "token",
-    "refresh_token": "token",
-    "token_type": "Bearer",
-    "expires_in": 900
-  }
+  "access_token": "token",
+  "refresh_token": "token"
 }
 ```
 
@@ -225,9 +267,17 @@ Behavior:
 
 - Accepts refresh tokens in a JSON request body
 - Rotates both `access_token` and `refresh_token` after a successful refresh
+- Invalidates the previously submitted refresh token immediately
 - Returns `401 Unauthorized` for invalid or expired refresh tokens
 
-Failure response:
+Common failure responses:
+
+```json
+{
+  "status": "error",
+  "message": "Refresh token is required"
+}
+```
 
 ```json
 {
@@ -236,9 +286,66 @@ Failure response:
 }
 ```
 
+### `POST /auth/logout`
+
+Invalidates the submitted refresh token.
+
+Request:
+
+```json
+{
+  "refresh_token": "token"
+}
+```
+
+Behavior:
+
+- Deletes the matching stored refresh token
+- Returns `204 No Content` on success
+- Returns `401 Unauthorized` if the refresh token is invalid or already expired
+
+## Protected API contract
+
+All `/api/*` routes require:
+
+- `Authorization: Bearer <access_token>`
+- an active user account
+
+All profile routes also require:
+
+- `X-API-Version: 1`
+
+Role access:
+
+- `admin`: list, search, read, export, create, delete
+- `analyst`: list, search, read, export
+
+Common auth and access failures:
+
+```json
+{
+  "status": "error",
+  "message": "Authentication required"
+}
+```
+
+```json
+{
+  "status": "error",
+  "message": "User account is inactive"
+}
+```
+
+```json
+{
+  "status": "error",
+  "message": "API version header required"
+}
+```
+
 ### `POST /api/v1/profiles`
 
-Create or idempotently reuse a profile.
+Create or idempotently reuse a profile. This route requires an `admin` access token and `X-API-Version: 1`.
 
 Request:
 
@@ -297,11 +404,16 @@ Supports:
 - Sorting: `sort_by=age|created_at|gender_probability`, `order=asc|desc`
 - Pagination: `page`, `limit` with limit clamped to `50`
 - Validation: semantic query errors return `400`, while invalid numeric formats such as `min_age=abc` return `422`
+- Requires `Authorization: Bearer <access_token>` and `X-API-Version: 1`
+- Read access is allowed for `admin` and `analyst`
 
 Example:
 
 ```bash
-curl "http://localhost:4000/api/v1/profiles?gender=female&sort_by=age&order=desc&page=1&limit=10"
+curl \
+  -H "Authorization: Bearer <access_token>" \
+  -H "X-API-Version: 1" \
+  "http://localhost:4000/api/v1/profiles?gender=female&sort_by=age&order=desc&page=1&limit=10"
 ```
 
 Example response:
@@ -312,6 +424,12 @@ Example response:
   "page": 1,
   "limit": 2,
   "total": 2,
+  "total_pages": 1,
+  "links": {
+    "self": "/api/v1/profiles?gender=female&sort_by=age&order=desc&page=1&limit=2",
+    "next": null,
+    "prev": null
+  },
   "data": [
     {
       "id": "018f4f5c-6a90-7a33-b9d8-3c4f0e8b9f7c",
@@ -341,16 +459,17 @@ Example response:
 }
 ```
 
-### `GET /api/v1/profiles/export.csv`
+### `GET /api/v1/profiles/export?format=csv`
 
-Planned CSV export route for CLI and backend consumers. This route is part of the published contract, but it is not implemented by the current backend yet.
+Exports matching profiles as CSV. This route requires `Authorization: Bearer <access_token>` and `X-API-Version: 1`. Read access is allowed for `admin` and `analyst`.
 
 Behavior:
 
 - Uses the same filter and sort query parameters as `GET /api/v1/profiles`
+- Requires `format=csv`
 - Does not paginate export responses
 - Returns `Content-Type: text/csv; charset=utf-8`
-- Returns `Content-Disposition: attachment; filename="profiles-export.csv"`
+- Returns `Content-Disposition: attachment; filename="profiles_<timestamp>.csv"`
 - Uses the same query validation rules as `GET /api/v1/profiles`, including `400` semantic validation errors and `422` invalid numeric formats
 
 CSV column order:
@@ -369,7 +488,11 @@ CSV column order:
 Example:
 
 ```bash
-curl -L "http://localhost:4000/api/v1/profiles/export.csv?gender=female&sort_by=age&order=desc" -o profiles-export.csv
+curl -L \
+  -H "Authorization: Bearer <access_token>" \
+  -H "X-API-Version: 1" \
+  "http://localhost:4000/api/v1/profiles/export?format=csv&gender=female&sort_by=age&order=desc" \
+  -o profiles.csv
 ```
 
 Illustrative CSV response:
@@ -390,11 +513,16 @@ Deterministic natural-language search rules:
 - Comparators: `above 30`, `over 30`, `older than 30`, `below 20`, `under 20`, `younger than 20`
 - Country phrases: `from nigeria`, `from united kingdom`
 - Filter, sort, and pagination parameters follow the same validation rules as `GET /api/v1/profiles`
+- Requires `Authorization: Bearer <access_token>` and `X-API-Version: 1`
+- Read access is allowed for `admin` and `analyst`
 
 Example:
 
 ```bash
-curl "http://localhost:4000/api/v1/profiles/search?q=older%20than%2030%20from%20united%20kingdom"
+curl \
+  -H "Authorization: Bearer <access_token>" \
+  -H "X-API-Version: 1" \
+  "http://localhost:4000/api/v1/profiles/search?q=older%20than%2030%20from%20united%20kingdom"
 ```
 
 Example response:
@@ -405,6 +533,12 @@ Example response:
   "page": 1,
   "limit": 10,
   "total": 1,
+  "total_pages": 1,
+  "links": {
+    "self": "/api/v1/profiles/search?q=older+than+30+from+united+kingdom&page=1&limit=10",
+    "next": null,
+    "prev": null
+  },
   "data": [
     {
       "id": "018f4f5c-6a90-7a33-b9d8-3c4f0e8b9f7c",
@@ -433,7 +567,7 @@ If the query cannot be interpreted:
 
 ### `GET /api/v1/profiles/:id`
 
-Fetch one profile by id.
+Fetch one profile by id. This route requires `Authorization: Bearer <access_token>` and `X-API-Version: 1`. Read access is allowed for `admin` and `analyst`.
 
 Example response:
 
@@ -457,7 +591,7 @@ Example response:
 
 ### `DELETE /api/v1/profiles/:id`
 
-Delete one profile by id. Returns `204 No Content` on success.
+Delete one profile by id. This route requires an `admin` access token and `X-API-Version: 1`. Returns `204 No Content` on success.
 
 ## Error Contract
 
@@ -472,6 +606,20 @@ All API errors use:
 
 Common error messages returned by the current backend:
 
+- `Authentication required`
+- `User account is inactive`
+- `Forbidden`
+- `API version header required`
+- `GitHub OAuth is not configured`
+- `GitHub OAuth is not fully configured`
+- `GitHub OAuth code is required`
+- `GitHub OAuth state is required`
+- `Invalid GitHub OAuth state`
+- `GitHub OAuth verifier is missing`
+- `GitHub OAuth exchange failed`
+- `Refresh token is required`
+- `Refresh token must be a string`
+- `Invalid or expired refresh token`
 - `Invalid query parameters`
 - `Unable to interpret query`
 - `Database error`
@@ -480,7 +628,16 @@ Common error messages returned by the current backend:
 - `Invalid JSON body`
 - `Name is required`
 - `Name must be a string`
+- `Too many requests`
 - `Upstream enrichment service failed`
+
+## Operational Behavior
+
+- CORS allows all origins by default
+- Rate limiting returns `429 Too Many Requests`
+- `/auth/*` is limited to `10` requests per minute per client IP
+- All other endpoints are limited to `60` requests per minute per client IP
+- Every non-test request is logged with method, endpoint, status code, and response time
 
 Common non-error success message:
 
@@ -522,7 +679,7 @@ Test notes:
 
 - Uses `mongodb-memory-server` for isolated MongoDB integration tests
 - Uses mocked `fetch` for upstream enrichment APIs
-- Covers health, create, idempotent create, get by id, delete, list filters, search interpretation, validation, and seed behavior
+- Covers GitHub OAuth redirect and callback handling, refresh/logout session lifecycle, role-based access control, version-header enforcement, CSV export, create, idempotent create, get by id, delete, list filters, search interpretation, validation, and seed behavior
 
 ## Frontend Integration
 
@@ -534,20 +691,32 @@ http://<api-host>/api/v1
 
 Recommended frontend usage:
 
-- Future auth flow: `POST /api/v1/auth/login` and `POST /api/v1/auth/refresh`
+- Start OAuth: `GET /auth/github`
+- Handle OAuth callback response from `GET /auth/github/callback`
+- Rotate sessions: `POST /auth/refresh`
+- End sessions: `POST /auth/logout`
 - Portal create flow: `POST /api/v1/profiles`
 - Portal list pages: `GET /api/v1/profiles`
-- Future CLI export flow: `GET /api/v1/profiles/export.csv`
+- CLI export flow: `GET /api/v1/profiles/export?format=csv`
 - Portal search box: `GET /api/v1/profiles/search?q=...`
 - CLI integration: same endpoints using JSON over HTTP
 
-Configure the frontend origin in `CORS_ORIGIN` as a comma-separated list when deploying across separate repos or environments.
+Every profile request should send:
+
+- `Authorization: Bearer <access_token>`
+- `X-API-Version: 1`
+
+The default CORS policy allows requests from all origins. Set `CORS_ORIGIN` to `*` to keep that behavior, or provide a comma-separated list if you later want to restrict it.
 
 ## Deployment Notes
 
 - Set `NODE_ENV=production`
 - Provide a production MongoDB URI through `MONGO_URI`
-- Restrict `CORS_ORIGIN` to trusted portal origins
+- Keep `CORS_ORIGIN=*` to allow all origins, or provide a comma-separated list if you want to restrict access later
+- Set `TRUST_PROXY=true` when running behind a load balancer or ingress proxy
+- Decide whether Swagger should be public; keep `ENABLE_DOCS=false` in production unless you need external docs access
+- Tune `AUTH_RATE_LIMIT_MAX_REQUESTS`, `RATE_LIMIT_WINDOW_MS`, and `RATE_LIMIT_MAX_REQUESTS` for your expected traffic profile
 - Run the service behind a reverse proxy or load balancer if needed
 - Use the `/health` endpoint for readiness checks
-- API documentation is exposed at `/docs`
+- Use `/health/ready` for readiness probes and `/health` for liveness or diagnostics
+- API documentation is exposed at `/docs` only when `ENABLE_DOCS=true`

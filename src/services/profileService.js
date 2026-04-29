@@ -76,6 +76,11 @@ class ProfileService {
     return this.queryProfiles(options);
   }
 
+  async exportProfiles(options) {
+    const { filter, sort } = options;
+    return profileRepository.findAll(filter, sort);
+  }
+
   async searchProfiles(options) {
     const interpretedFilters = interpretSearchQuery(options.q);
     const combinedFilter = { ...options.filter };

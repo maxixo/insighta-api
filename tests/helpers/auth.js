@@ -45,3 +45,10 @@ export async function createAuthorizedUser(overrides = {}) {
 export function createAuthorizationHeader(accessToken) {
   return `Bearer ${accessToken}`;
 }
+
+export function createApiVersionHeaders(accessToken) {
+  return {
+    Authorization: createAuthorizationHeader(accessToken),
+    'X-API-Version': '1'
+  };
+}
