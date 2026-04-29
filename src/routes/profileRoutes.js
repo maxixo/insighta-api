@@ -4,6 +4,7 @@ import { USER_ROLES } from '../constants/auth.js';
 import {
   createProfile,
   deleteProfileById,
+  exportProfilesCsv,
   getProfileById,
   listProfiles,
   searchProfiles
@@ -18,6 +19,7 @@ const requireAdmin = requireRole([USER_ROLES.admin]);
 router.use(requireApiVersion);
 
 router.get('/search', allowReadAccess, searchProfiles);
+router.get('/export', allowReadAccess, exportProfilesCsv);
 router.get('/', allowReadAccess, listProfiles);
 router.post('/', requireAdmin, createProfile);
 router.get('/:id', allowReadAccess, getProfileById);

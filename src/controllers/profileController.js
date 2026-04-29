@@ -1,8 +1,9 @@
 import { profileService } from '../services/profileService.js';
 import { asyncHandler } from '../utils/asyncHandler.js';
+import { createProfilesCsvFilename, serializeProfilesCsv } from '../utils/csv.js';
 import { buildPaginatedResponse } from '../utils/pagination.js';
 import { validateCreateProfileBody, validateProfileId } from '../validators/profileValidators.js';
-import { validateListQuery, validateSearchQuery } from '../validators/queryValidators.js';
+import { validateExportQuery, validateListQuery, validateSearchQuery } from '../validators/queryValidators.js';
 
 function buildProfileListResponse(req, queryOptions, result) {
   return buildPaginatedResponse({
@@ -46,6 +47,16 @@ export const searchProfiles = asyncHandler(async (req, res) => {
   const result = await profileService.searchProfiles(queryOptions);
 
   res.status(200).json(buildProfileListResponse(req, queryOptions, result));
+});
+
+export const exportProfilesCsv = asyncHandler(async (req, res) => {
+  const queryOptions = validateExportQuery(req.query);
+  const profiles = await profileService.exportProfiles(queryOptions);
+  const filename = createProfilesCsvFilename();
+
+  res.set('Content-Type', 'text/csv; charset=utf-8');
+  res.set('Content-Disposition', `attachment; filename="${filename}"`);
+  res.status(200).send(serializeProfilesCsv(profiles));
 });
 
 export const getProfileById = asyncHandler(async (req, res) => {

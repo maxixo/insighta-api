@@ -189,3 +189,18 @@ export function validateSearchQuery(query) {
     ...validateListQuery(query)
   };
 }
+
+export function validateExportQuery(query) {
+  const format = getSingleValue(query, 'format');
+
+  if (format !== 'csv') {
+    throw new AppError(400, 'Invalid query parameters');
+  }
+
+  const listQuery = validateListQuery(query);
+
+  return {
+    filter: listQuery.filter,
+    sort: listQuery.sort
+  };
+}
